@@ -684,8 +684,8 @@ td input {
 }
 
 #real-charge-board {
-  --real-worked-name-col-width: 180px;
-  --real-worked-total-col-width: 110px;
+  --real-worked-name-col-width: var(--charge-plan-name-col-width);
+  --real-worked-total-col-width: var(--charge-plan-total-col-width);
   --real-worked-month-col-width: 118px;
   min-width: 0;
 }
@@ -1078,6 +1078,10 @@ td input {
 .charge-plan-cell--total {
   position: sticky;
   z-index: 12;
+  display: flex;
+  align-items: center;
+  font-size: 1rem;
+  line-height: 1.25;
   box-shadow:
     1px 0 0 rgba(0, 73, 144, 0.08),
     10px 0 18px rgba(8, 21, 38, 0.04);
@@ -1091,6 +1095,7 @@ td input {
   min-width: var(--charge-plan-name-col-width);
   max-width: var(--charge-plan-name-col-width);
   z-index: 15;
+  font-weight: 700;
   white-space: normal;
   overflow-wrap: anywhere;
   word-break: break-word;
@@ -1102,6 +1107,10 @@ td input {
   min-width: var(--charge-plan-total-col-width);
   max-width: var(--charge-plan-total-col-width);
   z-index: 14;
+  justify-content: flex-end;
+  color: var(--color-primary);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 
 .charge-plan-row--header .charge-plan-cell--name,
@@ -1551,9 +1560,11 @@ td input {
   z-index: 6;
   display: flex;
   align-items: center;
+  font-size: 1rem;
+  line-height: 1.25;
   box-shadow:
     1px 0 0 rgba(0, 73, 144, 0.08),
-    8px 0 18px rgba(8, 21, 38, 0.04);
+    10px 0 18px rgba(8, 21, 38, 0.04);
 }
 
 .real-worked-table-cell--name {
@@ -2625,7 +2636,8 @@ canvas {
     width: 100%;
   }
 
-  #charge-plan-board {
+  #charge-plan-board,
+  #real-charge-board {
     --charge-plan-name-col-width: 170px;
     --charge-plan-total-col-width: 96px;
   }

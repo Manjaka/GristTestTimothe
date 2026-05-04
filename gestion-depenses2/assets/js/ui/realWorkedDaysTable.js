@@ -194,7 +194,7 @@ function renderTotalRow(project, months) {
 }
 
 function getTableMinWidth(monthCount) {
-  return 180 + 110 + Math.max(0, monthCount) * 118;
+  return 150 + 100 + Math.max(0, monthCount) * 118;
 }
 
 export function renderRealWorkedDaysTable(boardEl, project) {
