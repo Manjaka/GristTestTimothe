@@ -12,12 +12,9 @@ const resolvedColumnCache = new Map();
 
 const TIME_SEGMENT_COLUMN_ALIASES = {
   id: ["id"],
-  projectTeamLink: [
-    "ProjectTeam_Link",
-    "ProjectTeamLink",
-    "Project_Team_Link",
-    "ProjectTeam",
-  ],
+  projectNumber: ["NumeroProjet", "Numero_Projet", "Project_Number", "ProjectNumber"],
+  name: ["Name", "Nom", "Worker_Name", "Team_Member_Name"],
+  segmentType: ["Segment_Type", "SegmentType", "Type"],
   startDate: ["Start_Date", "Start_At", "StartDate", "Start"],
   endDate: ["End_Date", "End_At", "EndDate", "End"],
   allocationDays: [
@@ -32,12 +29,8 @@ const TIME_SEGMENT_COLUMN_ALIASES = {
 
 const TIME_REAL_COLUMN_ALIASES = {
   id: ["id"],
-  projectTeamLink: [
-    "ProjectTeam_Link",
-    "ProjectTeamLink",
-    "Project_Team_Link",
-    "ProjectTeam",
-  ],
+  projectNumber: ["NumeroProjet", "Numero_Projet", "Project_Number", "ProjectNumber"],
+  name: ["Name", "Nom", "Worker_Name", "Team_Member_Name"],
   startDate: ["Start_At", "Start_Date", "StartAt", "Start"],
   endDate: ["End_At", "End_Date", "EndAt", "End"],
   allocationDays: [
@@ -212,7 +205,9 @@ async function fetchNormalizedTimeSegmentRows() {
 
   return rows.map((row) => ({
     [canonicalColumns.id]: row?.[resolvedColumns.id],
-    [canonicalColumns.projectTeamLink]: row?.[resolvedColumns.projectTeamLink],
+    [canonicalColumns.projectNumber]: row?.[resolvedColumns.projectNumber],
+    [canonicalColumns.name]: row?.[resolvedColumns.name],
+    [canonicalColumns.segmentType]: row?.[resolvedColumns.segmentType],
     [canonicalColumns.startDate]: row?.[resolvedColumns.startDate],
     [canonicalColumns.endDate]: row?.[resolvedColumns.endDate],
     [canonicalColumns.allocationDays]: row?.[resolvedColumns.allocationDays],
@@ -230,7 +225,8 @@ async function fetchNormalizedTimeRealRows() {
 
   return rows.map((row) => ({
     [canonicalColumns.id]: row?.[resolvedColumns.id],
-    [canonicalColumns.projectTeamLink]: row?.[resolvedColumns.projectTeamLink],
+    [canonicalColumns.projectNumber]: row?.[resolvedColumns.projectNumber],
+    [canonicalColumns.name]: row?.[resolvedColumns.name],
     [canonicalColumns.startDate]: row?.[resolvedColumns.startDate],
     [canonicalColumns.endDate]: row?.[resolvedColumns.endDate],
     [canonicalColumns.allocationDays]: row?.[resolvedColumns.allocationDays],
@@ -369,35 +365,57 @@ export async function addWorkerToProject(project, teamMember) {
   ]);
 }
 
+function normalizeSegmentPersonKey(value) {
+  return toText(value)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+function matchesWorkerIdentity(row, columns, workerProjectNumber, workerName) {
+  return (
+    toText(row?.[columns.projectNumber]) === workerProjectNumber &&
+    normalizeSegmentPersonKey(row?.[columns.name]) === workerName
+  );
+}
+
 export async function removeProjectWorker(workerId) {
   const normalizedWorkerId = toReferenceId(workerId);
   if (!normalizedWorkerId) return;
 
+  const projectTeamRows = await fetchTableRows(APP_CONFIG.grist.tables.projectTeam);
+  const projectTeamColumns = APP_CONFIG.grist.columns.projectTeam;
+  const workerRow = (projectTeamRows || []).find((row) => {
+    return toReferenceId(row?.[projectTeamColumns.id]) === normalizedWorkerId;
+  });
+  if (!workerRow) return;
+
+  const workerProjectNumber = toText(workerRow?.[projectTeamColumns.projectNumber]);
+  const workerName = normalizeSegmentPersonKey(workerRow?.[projectTeamColumns.name]);
+
   const timeSegmentRows = await fetchNormalizedTimeSegmentRows();
   const timeRealRows = await fetchNormalizedTimeRealRows();
+  const timeSegmentColumns = APP_CONFIG.grist.columns.timeSegment;
+  const timeRealColumns = APP_CONFIG.grist.columns.timeReal;
   const segmentRemovals = (timeSegmentRows || [])
-    .filter((row) => {
-      const projectTeamLink = toReferenceId(
-        row?.[APP_CONFIG.grist.columns.timeSegment.projectTeamLink]
-      );
-      return projectTeamLink === normalizedWorkerId;
-    })
+    .filter((row) =>
+      matchesWorkerIdentity(row, timeSegmentColumns, workerProjectNumber, workerName)
+    )
     .map((row) => [
       "RemoveRecord",
       APP_CONFIG.grist.tables.timeSegment,
-      row?.[APP_CONFIG.grist.columns.timeSegment.id],
+      row?.[timeSegmentColumns.id],
     ]);
   const realRemovals = (timeRealRows || [])
-    .filter((row) => {
-      const projectTeamLink = toReferenceId(
-        row?.[APP_CONFIG.grist.columns.timeReal.projectTeamLink]
-      );
-      return projectTeamLink === normalizedWorkerId;
-    })
+    .filter((row) =>
+      matchesWorkerIdentity(row, timeRealColumns, workerProjectNumber, workerName)
+    )
     .map((row) => [
       "RemoveRecord",
       APP_CONFIG.grist.tables.timeReal,
-      row?.[APP_CONFIG.grist.columns.timeReal.id],
+      row?.[timeRealColumns.id],
     ]);
 
   await applyActions([
@@ -508,7 +526,8 @@ export async function upsertTimesheetBatch({ workerId, updates }) {
 }
 
 export async function createTimeSegment({
-  projectTeamLink,
+  projectNumber,
+  name,
   startDate,
   endDate,
   allocationDays,
@@ -519,9 +538,11 @@ export async function createTimeSegment({
   const columns = await getResolvedTimeSegmentColumns();
   const startValue = toGristDateTimeValue(startDate);
   const endValue = toGristDateTimeValue(endDate);
+  const normalizedProjectNumber = toText(projectNumber);
+  const normalizedName = toText(name);
 
-  if (!Number.isInteger(Number(projectTeamLink)) || startValue == null || endValue == null) {
-    throw new Error("Segment invalide : ProjectTeam, date debut ou date fin manquant.");
+  if (!normalizedProjectNumber || !normalizedName || startValue == null || endValue == null) {
+    throw new Error("Segment invalide : numero projet, nom, date debut ou date fin manquant.");
   }
 
   const result = await applyActions([
@@ -531,7 +552,8 @@ export async function createTimeSegment({
       null,
       Object.fromEntries(
         Object.entries({
-          [columns.projectTeamLink]: Number(projectTeamLink),
+          [columns.projectNumber]: normalizedProjectNumber,
+          [columns.name]: normalizedName,
           [columns.startDate]: startValue,
           [columns.endDate]: endValue,
           [columns.allocationDays]: toFiniteNumber(allocationDays, 0),

@@ -113,7 +113,9 @@ export const APP_CONFIG = {
       },
       timeSegment: {
         id: "id",
-        projectTeamLink: "ProjectTeam_Link",
+        projectNumber: "NumeroProjet",
+        name: "Name",
+        segmentType: "Segment_Type",
         startDate: "Start_Date",
         endDate: "End_Date",
         allocationDays: "Allocation_Days",
@@ -122,7 +124,8 @@ export const APP_CONFIG = {
       },
       timeReal: {
         id: "id",
-        projectTeamLink: "ProjectTeam_Link",
+        projectNumber: "NumeroProjet",
+        name: "Name",
         startDate: "Start_At",
         endDate: "End_At",
         allocationDays: "Allocation_Days",

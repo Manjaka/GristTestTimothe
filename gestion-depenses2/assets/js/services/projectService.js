@@ -7,7 +7,6 @@ import {
   getMonthKeyFromRawMonth,
   getMonthStartDate,
   toFiniteNumber,
-  toReferenceId,
   toText,
 } from "../utils/format.js";
 import {
@@ -64,6 +63,16 @@ function normalizePersonName(value) {
     .replace(/\s+/g, " ")
     .trim()
     .toLowerCase();
+}
+
+function buildWorkerLookupKey(projectNumber, name) {
+  const normalizedProjectNumber = toText(projectNumber);
+  const normalizedName = normalizePersonName(name);
+  if (!normalizedProjectNumber || !normalizedName) {
+    return "";
+  }
+
+  return `${normalizedProjectNumber}::${normalizedName}`;
 }
 
 function normalizeLookupText(value) {
@@ -406,6 +415,7 @@ export function buildExpenseData({
   });
 
   const workersById = new Map();
+  const workersByProjectPerson = new Map();
   const inferredRolesByName = new Map();
 
   (projectTeamRows || []).forEach((row) => {
@@ -429,6 +439,19 @@ export function buildExpenseData({
     project.workers.push(worker);
     workersById.set(worker.id, worker);
 
+    const workerLookupKey = buildWorkerLookupKey(project.projectNumber, worker.name);
+    if (workerLookupKey) {
+      if (workersByProjectPerson.has(workerLookupKey)) {
+        console.warn(
+          "Collaborateur duplique pour le meme projet dans ProjectTeam :",
+          project.projectNumber,
+          worker.name
+        );
+      } else {
+        workersByProjectPerson.set(workerLookupKey, worker);
+      }
+    }
+
     const normalizedName = normalizePersonName(worker.name);
     const normalizedRole = toText(worker.role);
     if (normalizedName && normalizedRole) {
@@ -442,8 +465,17 @@ export function buildExpenseData({
   });
 
   (timeSegmentRows || []).forEach((row) => {
-    const workerId = toReferenceId(row?.[columns.timeSegment.projectTeamLink]);
-    const worker = workersById.get(workerId);
+    const rawSegmentType = normalizeLookupText(row?.[columns.timeSegment.segmentType]);
+    if (rawSegmentType && rawSegmentType !== "previsionnel") {
+      return;
+    }
+
+    const worker = workersByProjectPerson.get(
+      buildWorkerLookupKey(
+        row?.[columns.timeSegment.projectNumber],
+        row?.[columns.timeSegment.name]
+      )
+    );
     if (!worker) return;
 
     const startAt = parseRawDateTime(row?.[columns.timeSegment.startDate]);
@@ -458,7 +490,7 @@ export function buildExpenseData({
 
     const segment = {
       id: Number(row?.[columns.timeSegment.id]),
-      projectTeamLink: workerId,
+      projectTeamLink: worker.id,
       startAt,
       endAt,
       segmentType: "previsionnel",
@@ -478,8 +510,12 @@ export function buildExpenseData({
   });
 
   (timeRealRows || []).forEach((row) => {
-    const workerId = toReferenceId(row?.[columns.timeReal.projectTeamLink]);
-    const worker = workersById.get(workerId);
+    const worker = workersByProjectPerson.get(
+      buildWorkerLookupKey(
+        row?.[columns.timeReal.projectNumber],
+        row?.[columns.timeReal.name]
+      )
+    );
     if (!worker) return;
 
     const startAt = parseRawDateTime(row?.[columns.timeReal.startDate]);
@@ -492,7 +528,7 @@ export function buildExpenseData({
     );
     const segment = {
       id: Number(row?.[columns.timeReal.id]),
-      projectTeamLink: workerId,
+      projectTeamLink: worker.id,
       startAt,
       endAt,
       segmentType: "real",

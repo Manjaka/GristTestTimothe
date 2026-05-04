@@ -2241,6 +2241,13 @@ async function createChargePlanSegment(
     return false;
   }
 
+  const selectedWorker = (selectedProject.workers || []).find((worker) => {
+    return Number(worker?.id) === Number(workerId);
+  });
+  if (!selectedWorker) {
+    return false;
+  }
+
   const optimisticSegment = buildOptimisticChargePlanSegment({
     segmentId: getNextOptimisticTimeSegmentId(),
     workerId,
@@ -2261,7 +2268,8 @@ async function createChargePlanSegment(
   try {
     const createdSegmentId = Number(
       await createTimeSegment({
-        projectTeamLink: workerId,
+        projectNumber: selectedProject.projectNumber,
+        name: selectedWorker.name,
         startDate: selection.startDate,
         endDate: selection.endDate,
         allocationDays: selection.totalDays,
