@@ -94,6 +94,7 @@ function renderRoleRow(role, monthCount) {
       style="--real-worked-month-count:${monthCount}"
     >
       <div class="real-worked-table-role-label">${escapeHtml(role)}</div>
+      <div class="real-worked-table-role-fill" aria-hidden="true"></div>
     </div>
   `;
 }

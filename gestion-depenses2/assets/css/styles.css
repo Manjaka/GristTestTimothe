@@ -1554,6 +1554,11 @@ td input {
   font-variant-numeric: tabular-nums;
 }
 
+.real-worked-table-cell--month,
+.real-worked-table-cell--value {
+  border-left: 1px solid rgba(0, 73, 144, 0.08);
+}
+
 .real-worked-table-row--role {
   grid-template-columns:
     var(--real-worked-name-col-width)
@@ -1565,11 +1570,18 @@ td input {
   position: sticky;
   left: 0;
   z-index: 9;
-  grid-column: 1 / -1;
+  grid-column: 1 / 3;
   min-height: 36px;
   padding: 9px 12px;
   color: #fff;
   font-weight: 700;
+  background: var(--color-primary);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+.real-worked-table-role-fill {
+  grid-column: 3 / -1;
+  min-height: 36px;
   background: var(--color-primary);
   border-bottom: 1px solid rgba(255, 255, 255, 0.16);
 }
