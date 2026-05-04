@@ -68,6 +68,45 @@ function buildRealWorkedMonths(project) {
   );
 }
 
+function buildYearGroups(months) {
+  return months.reduce((groups, month) => {
+    const lastGroup = groups[groups.length - 1];
+    if (lastGroup?.year === month.year) {
+      lastGroup.monthCount += 1;
+      return groups;
+    }
+
+    groups.push({
+      year: month.year,
+      monthCount: 1,
+    });
+    return groups;
+  }, []);
+}
+
+function renderYearHeader(months) {
+  const yearGroups = buildYearGroups(months);
+
+  return `
+    <div class="real-worked-table-row real-worked-table-row--year-header">
+      <div class="real-worked-table-cell real-worked-table-cell--name" aria-hidden="true"></div>
+      <div class="real-worked-table-cell real-worked-table-cell--total" aria-hidden="true"></div>
+      ${yearGroups
+        .map(
+          (group) => `
+            <div
+              class="real-worked-table-cell real-worked-table-year-group"
+              style="grid-column: span ${group.monthCount}"
+            >
+              ${escapeHtml(group.year)}
+            </div>
+          `
+        )
+        .join("")}
+    </div>
+  `;
+}
+
 function renderHeader(months) {
   return `
     <div class="real-worked-table-row real-worked-table-row--header">
@@ -78,7 +117,6 @@ function renderHeader(months) {
           (month) => `
             <div class="real-worked-table-cell real-worked-table-cell--month">
               <span>${escapeHtml(month.monthLabel)}</span>
-              <span>${month.year}</span>
             </div>
           `
         )
@@ -189,6 +227,7 @@ export function renderRealWorkedDaysTable(boardEl, project) {
         class="real-worked-table"
         style="--real-worked-month-count:${monthCount}; --real-worked-table-min-width:${getTableMinWidth(monthCount)}px"
       >
+        ${renderYearHeader(months)}
         ${renderHeader(months)}
         ${rows}
         ${renderTotalRow(project, months)}
