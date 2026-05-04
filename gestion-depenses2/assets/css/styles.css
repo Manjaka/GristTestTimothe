@@ -1581,6 +1581,10 @@ td input {
   border-left: 1px solid rgba(0, 73, 144, 0.08);
 }
 
+.real-worked-table-row--header .real-worked-table-cell--month {
+  border-left-color: rgba(255, 255, 255, 0.16);
+}
+
 .real-worked-table-row--role {
   grid-template-columns:
     var(--real-worked-name-col-width)
@@ -1602,10 +1606,10 @@ td input {
 }
 
 .real-worked-table-role-fill {
-  grid-column: 3 / -1;
   min-height: 36px;
   background: var(--color-primary);
   border-bottom: 1px solid rgba(255, 255, 255, 0.16);
+  border-left: 1px solid rgba(255, 255, 255, 0.16);
 }
 
 .real-worked-table-row--total .real-worked-table-cell {
