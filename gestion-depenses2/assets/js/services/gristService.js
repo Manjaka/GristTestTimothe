@@ -20,7 +20,6 @@ const TIME_SEGMENT_COLUMN_ALIASES = {
   ],
   startDate: ["Start_Date", "Start_At", "StartDate", "Start"],
   endDate: ["End_Date", "End_At", "EndDate", "End"],
-  segmentType: ["Segment_Type", "SegmentType", "Type"],
   allocationDays: [
     "Allocation_Days",
     "AllocationDays",
@@ -29,6 +28,24 @@ const TIME_SEGMENT_COLUMN_ALIASES = {
   ],
   effectif: ["Effectif"],
   label: ["Label", "Name", "Title"],
+};
+
+const TIME_REAL_COLUMN_ALIASES = {
+  id: ["id"],
+  projectTeamLink: [
+    "ProjectTeam_Link",
+    "ProjectTeamLink",
+    "Project_Team_Link",
+    "ProjectTeam",
+  ],
+  startDate: ["Start_At", "Start_Date", "StartAt", "Start"],
+  endDate: ["End_At", "End_Date", "EndAt", "End"],
+  allocationDays: [
+    "Allocation_Days",
+    "AllocationDays",
+    "Allocation",
+    "Days",
+  ],
 };
 
 function getGrist() {
@@ -146,15 +163,14 @@ async function fetchOptionalTableRows(tableName) {
   }
 }
 
-async function getResolvedTimeSegmentColumns() {
-  const cacheKey = APP_CONFIG.grist.tables.timeSegment;
+async function getResolvedColumns(tableName, configuredColumns, aliasesByKey = {}) {
+  const cacheKey = tableName;
   if (resolvedColumnCache.has(cacheKey)) {
     return resolvedColumnCache.get(cacheKey);
   }
 
   const raw = await fetchTableRaw(cacheKey);
   const availableColumns = getAvailableColumnIds(raw);
-  const configuredColumns = APP_CONFIG.grist.columns.timeSegment;
 
   const resolved = Object.fromEntries(
     Object.entries(configuredColumns).map(([key, requestedColumnId]) => [
@@ -162,13 +178,29 @@ async function getResolvedTimeSegmentColumns() {
       resolveColumnId(
         availableColumns,
         requestedColumnId,
-        TIME_SEGMENT_COLUMN_ALIASES[key] || []
+        aliasesByKey[key] || []
       ),
     ])
   );
 
   resolvedColumnCache.set(cacheKey, resolved);
   return resolved;
+}
+
+async function getResolvedTimeSegmentColumns() {
+  return getResolvedColumns(
+    APP_CONFIG.grist.tables.timeSegment,
+    APP_CONFIG.grist.columns.timeSegment,
+    TIME_SEGMENT_COLUMN_ALIASES
+  );
+}
+
+async function getResolvedTimeRealColumns() {
+  return getResolvedColumns(
+    APP_CONFIG.grist.tables.timeReal,
+    APP_CONFIG.grist.columns.timeReal,
+    TIME_REAL_COLUMN_ALIASES
+  );
 }
 
 async function fetchNormalizedTimeSegmentRows() {
@@ -183,10 +215,25 @@ async function fetchNormalizedTimeSegmentRows() {
     [canonicalColumns.projectTeamLink]: row?.[resolvedColumns.projectTeamLink],
     [canonicalColumns.startDate]: row?.[resolvedColumns.startDate],
     [canonicalColumns.endDate]: row?.[resolvedColumns.endDate],
-    [canonicalColumns.segmentType]: row?.[resolvedColumns.segmentType],
     [canonicalColumns.allocationDays]: row?.[resolvedColumns.allocationDays],
     [canonicalColumns.effectif]: row?.[resolvedColumns.effectif],
     [canonicalColumns.label]: row?.[resolvedColumns.label],
+  }));
+}
+
+async function fetchNormalizedTimeRealRows() {
+  const tableName = APP_CONFIG.grist.tables.timeReal;
+  const raw = await fetchTableRaw(tableName);
+  const rows = normalizeFetchTableResult(raw);
+  const resolvedColumns = await getResolvedTimeRealColumns();
+  const canonicalColumns = APP_CONFIG.grist.columns.timeReal;
+
+  return rows.map((row) => ({
+    [canonicalColumns.id]: row?.[resolvedColumns.id],
+    [canonicalColumns.projectTeamLink]: row?.[resolvedColumns.projectTeamLink],
+    [canonicalColumns.startDate]: row?.[resolvedColumns.startDate],
+    [canonicalColumns.endDate]: row?.[resolvedColumns.endDate],
+    [canonicalColumns.allocationDays]: row?.[resolvedColumns.allocationDays],
   }));
 }
 
@@ -206,6 +253,7 @@ export async function fetchExpenseAppTables() {
     projectTeamRows,
     timesheetRows,
     timeSegmentRows,
+    timeRealRows,
     teamRows,
   ] = await Promise.all([
     fetchTableRows(tables.projects),
@@ -214,6 +262,7 @@ export async function fetchExpenseAppTables() {
     fetchTableRows(tables.projectTeam),
     fetchTableRows(tables.timesheet),
     fetchNormalizedTimeSegmentRows(),
+    fetchNormalizedTimeRealRows(),
     fetchTableRows(tables.team),
   ]);
 
@@ -224,6 +273,7 @@ export async function fetchExpenseAppTables() {
     projectTeamRows,
     timesheetRows,
     timeSegmentRows,
+    timeRealRows,
     teamRows,
   };
 }
@@ -324,6 +374,7 @@ export async function removeProjectWorker(workerId) {
   if (!normalizedWorkerId) return;
 
   const timeSegmentRows = await fetchNormalizedTimeSegmentRows();
+  const timeRealRows = await fetchNormalizedTimeRealRows();
   const segmentRemovals = (timeSegmentRows || [])
     .filter((row) => {
       const projectTeamLink = toReferenceId(
@@ -336,9 +387,22 @@ export async function removeProjectWorker(workerId) {
       APP_CONFIG.grist.tables.timeSegment,
       row?.[APP_CONFIG.grist.columns.timeSegment.id],
     ]);
+  const realRemovals = (timeRealRows || [])
+    .filter((row) => {
+      const projectTeamLink = toReferenceId(
+        row?.[APP_CONFIG.grist.columns.timeReal.projectTeamLink]
+      );
+      return projectTeamLink === normalizedWorkerId;
+    })
+    .map((row) => [
+      "RemoveRecord",
+      APP_CONFIG.grist.tables.timeReal,
+      row?.[APP_CONFIG.grist.columns.timeReal.id],
+    ]);
 
   await applyActions([
     ...segmentRemovals,
+    ...realRemovals,
     ["RemoveRecord", APP_CONFIG.grist.tables.projectTeam, normalizedWorkerId],
   ]);
 }
@@ -449,7 +513,6 @@ export async function createTimeSegment({
   endDate,
   allocationDays,
   effectif,
-  segmentType = "previsionnel",
   label = "",
 }) {
   const tableName = APP_CONFIG.grist.tables.timeSegment;
@@ -471,7 +534,6 @@ export async function createTimeSegment({
           [columns.projectTeamLink]: Number(projectTeamLink),
           [columns.startDate]: startValue,
           [columns.endDate]: endValue,
-          [columns.segmentType]: segmentType,
           [columns.allocationDays]: toFiniteNumber(allocationDays, 0),
           [columns.effectif]:
             effectif === undefined
@@ -494,7 +556,6 @@ export async function updateTimeSegment({
   endDate,
   allocationDays,
   effectif,
-  segmentType,
   label,
 }) {
   const normalizedId = toReferenceId(segmentId);
@@ -528,10 +589,6 @@ export async function updateTimeSegment({
   if (effectif !== undefined) {
     fields[columns.effectif] =
       effectif === "" ? "" : toFiniteNumber(effectif, 0);
-  }
-
-  if (segmentType != null) {
-    fields[columns.segmentType] = segmentType;
   }
 
   if (label != null) {

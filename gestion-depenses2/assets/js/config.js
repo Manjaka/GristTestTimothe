@@ -63,6 +63,7 @@ export const APP_CONFIG = {
       projectTeam: "ProjectTeam",
       timesheet: "Timesheet",
       timeSegment: "TimeSegment",
+      timeReal: "TimeReal",
       team: "Team",
     },
     columns: {
@@ -115,10 +116,16 @@ export const APP_CONFIG = {
         projectTeamLink: "ProjectTeam_Link",
         startDate: "Start_Date",
         endDate: "End_Date",
-        segmentType: "Segment_Type",
         allocationDays: "Allocation_Days",
         effectif: "Effectif",
         label: "Label",
+      },
+      timeReal: {
+        id: "id",
+        projectTeamLink: "ProjectTeam_Link",
+        startDate: "Start_At",
+        endDate: "End_At",
+        allocationDays: "Allocation_Days",
       },
       team: {
         id: "id",

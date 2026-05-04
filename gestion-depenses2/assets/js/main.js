@@ -2078,7 +2078,7 @@ function rebuildWorkerChargePlanState(worker, segmentType, nextSegmentsInput) {
 
   nextWorker.workedDays = nextSegments.length
     ? buildChargePlanDaysByMonthFromSegments(nextSegments)
-    : { ...(worker?.timesheetWorkedDays || {}) };
+    : {};
 
   return nextWorker;
 }

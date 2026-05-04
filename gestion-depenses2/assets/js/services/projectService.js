@@ -53,16 +53,6 @@ function createProjectNumberIndex(projects) {
   return index;
 }
 
-function isPrevisionalSegment(segmentType) {
-  const normalizedType = toText(segmentType).toLowerCase();
-  return !normalizedType || normalizedType === "previsionnel";
-}
-
-function isRealSegment(segmentType) {
-  const normalizedType = toText(segmentType).toLowerCase();
-  return normalizedType === "reel" || normalizedType === "real";
-}
-
 function mergeMonthlyDays(target, monthKey, value) {
   target[monthKey] = Math.round((toFiniteNumber(target[monthKey], 0) + value) * 100) / 100;
 }
@@ -312,6 +302,7 @@ export function buildExpenseData({
   projectTeamRows,
   timesheetRows,
   timeSegmentRows,
+  timeRealRows,
   teamRows,
 }) {
   const columns = APP_CONFIG.grist.columns;
@@ -459,7 +450,6 @@ export function buildExpenseData({
     const endAt = parseRawDateTime(row?.[columns.timeSegment.endDate]);
     if (!startAt || !endAt) return;
 
-    const segmentType = toText(row?.[columns.timeSegment.segmentType]);
     const rawEffectifValue = row?.[columns.timeSegment.effectif];
     const hasEffectifValue = !(
       rawEffectifValue == null ||
@@ -471,7 +461,7 @@ export function buildExpenseData({
       projectTeamLink: workerId,
       startAt,
       endAt,
-      segmentType,
+      segmentType: "previsionnel",
       allocationDays: toFiniteNumber(row?.[columns.timeSegment.allocationDays], 0),
       effectifDays: hasEffectifValue
         ? Math.max(0, toFiniteNumber(rawEffectifValue, 0))
@@ -479,24 +469,44 @@ export function buildExpenseData({
       label: toText(row?.[columns.timeSegment.label]),
     };
 
-    if (isPrevisionalSegment(segmentType)) {
-      worker.segments.push(segment);
+    worker.segments.push(segment);
 
-      const monthlyAllocation = getSegmentAllocationByMonth(segment);
-      Object.entries(monthlyAllocation).forEach(([monthKey, days]) => {
-        mergeMonthlyDays(worker.provisionalDays, monthKey, toFiniteNumber(days, 0));
-      });
-      return;
-    }
+    const monthlyAllocation = getSegmentAllocationByMonth(segment);
+    Object.entries(monthlyAllocation).forEach(([monthKey, days]) => {
+      mergeMonthlyDays(worker.provisionalDays, monthKey, toFiniteNumber(days, 0));
+    });
+  });
 
-    if (isRealSegment(segmentType)) {
-      worker.realSegments.push(segment);
+  (timeRealRows || []).forEach((row) => {
+    const workerId = toReferenceId(row?.[columns.timeReal.projectTeamLink]);
+    const worker = workersById.get(workerId);
+    if (!worker) return;
 
-      const monthlyAllocation = getSegmentAllocationByMonth(segment);
-      Object.entries(monthlyAllocation).forEach(([monthKey, days]) => {
-        mergeMonthlyDays(worker.workedDays, monthKey, toFiniteNumber(days, 0));
-      });
-    }
+    const startAt = parseRawDateTime(row?.[columns.timeReal.startDate]);
+    const endAt = parseRawDateTime(row?.[columns.timeReal.endDate]);
+    if (!startAt || !endAt) return;
+
+    const allocationDays = Math.max(
+      0,
+      toFiniteNumber(row?.[columns.timeReal.allocationDays], 0)
+    );
+    const segment = {
+      id: Number(row?.[columns.timeReal.id]),
+      projectTeamLink: workerId,
+      startAt,
+      endAt,
+      segmentType: "real",
+      allocationDays,
+      effectifDays: allocationDays,
+      label: "",
+    };
+
+    worker.realSegments.push(segment);
+
+    const monthlyAllocation = getSegmentAllocationByMonth(segment);
+    Object.entries(monthlyAllocation).forEach(([monthKey, days]) => {
+      mergeMonthlyDays(worker.workedDays, monthKey, toFiniteNumber(days, 0));
+    });
   });
 
   workersById.forEach((worker) => {
@@ -515,14 +525,6 @@ export function buildExpenseData({
     const workedDays = row?.[columns.timesheet.workedDays];
     if (workedDays != null) {
       worker.timesheetWorkedDays[monthKey] = toFiniteNumber(workedDays, 0);
-    }
-
-    if (worker.realSegments.length > 0) {
-      return;
-    }
-
-    if (Object.prototype.hasOwnProperty.call(worker.timesheetWorkedDays, monthKey)) {
-      worker.workedDays[monthKey] = worker.timesheetWorkedDays[monthKey];
     }
   });
 
