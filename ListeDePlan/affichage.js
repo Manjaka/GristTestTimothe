@@ -1153,9 +1153,6 @@ async function appliquerDateSurTouteLaColonne(th, isoDate) {
   const actionsUpsert = []; // Update + Add
   const actionsDelete = []; // Remove (multi-date)
 
-  // Petite aide pour comparer sans bug number/string
-  const same = (a, b) => String(a ?? "").trim() === String(b ?? "").trim();
-
   for (const tr of rows) {
     const td = tr.cells[colIndex];
     if (!td) continue;
@@ -1186,30 +1183,16 @@ async function appliquerDateSurTouteLaColonne(th, isoDate) {
       continue;
     }
 
-    // 3) Cellule vide : essayer de réutiliser un "placeholder" (Indice null) sinon AddRecord
-    const placeholder = window.records.find(r =>
-      same(r.Type_document, typeDocument) &&
-      same(typeof r.Nom_projet === "object" ? r.Nom_projet.details : r.Nom_projet, nomProjet) &&
-      same(r.NumeroDocument, numDocument) &&
-      same(r.Designation, designation) &&
-      same(r.Zone, zone) &&
-      (r.Indice == null || r.Indice === "") &&
-      (r.DateDiffusion == null || r.DateDiffusion === "")
-    );
-
-    if (placeholder?.id) {
-      actionsUpsert.push(["UpdateRecord", "ListePlan_NDC_COF", placeholder.id, { Indice: indice, DateDiffusion: isoDate }]);
-    } else {
-      actionsUpsert.push(["AddRecord", "ListePlan_NDC_COF", null, {
-        NumeroDocument: numDocument,
-        Type_document: typeDocument,
-        Designation: designation,
-        Nom_projet: nomProjet,
-        Zone: zone || "",
-        Indice: indice,
-        DateDiffusion: isoDate
-      }]);
-    }
+    // 3) Cellule vide : meme comportement qu'une saisie cellule -> AddRecord.
+    actionsUpsert.push(["AddRecord", "ListePlan_NDC_COF", null, {
+      NumeroDocument: numDocument,
+      Type_document: typeDocument,
+      Designation: designation,
+      Nom_projet: nomProjet,
+      Zone: zone || "",
+      Indice: indice,
+      DateDiffusion: isoDate
+    }]);
 
     // ✅ Mise à jour visuelle immédiate (même si Grist met 0.5s à refresh)
     td.classList.remove("missing-date-error", "multi-date-error");
