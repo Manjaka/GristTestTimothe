@@ -24,6 +24,7 @@ let refreshInProgress = false;
 let importButtonBound = false;
 let importFileInputEl = null;
 let importInProgress = false;
+let sortMode = "chronological";
 
 function setMsProjectStatus(message = "") {
   const el = document.getElementById("msProjectStatus");
@@ -164,7 +165,8 @@ async function refreshMsProject() {
     const rows = await fetchMsProjectRows();
     const timelineData = buildTimelineDataFromMsProjectRows(
       rows,
-      state.selectedProject || ""
+      state.selectedProject || "",
+      sortMode
     );
 
     if (!timelineData.rowCount) {
@@ -181,7 +183,9 @@ async function refreshMsProject() {
     renderMsProjectTimeline(timelineData);
 
     if (!toolbarBound) {
-      bindTimelineToolbar();
+      bindTimelineToolbar({
+        onSortChange: handleSortModeChange,
+      });
       toolbarBound = true;
     }
 
@@ -199,6 +203,14 @@ async function refreshMsProject() {
 
 async function handleProjectChange(currentState) {
   console.log("Projet selectionne :", currentState.selectedProject || "(aucun)");
+  await refreshMsProject();
+}
+
+async function handleSortModeChange(nextSortMode) {
+  const normalizedSortMode =
+    nextSortMode === "planning-number" ? "planning-number" : "chronological";
+  if (sortMode === normalizedSortMode) return;
+  sortMode = normalizedSortMode;
   await refreshMsProject();
 }
 

@@ -80,16 +80,33 @@ function updateCurrentTimeLineBounds() {
   if (!container) return;
 
   const topPanel = container.querySelector(".vis-panel.vis-top");
+  const centerPanel = container.querySelector(".vis-panel.vis-center");
+  const leftPanel = container.querySelector(".vis-panel.vis-left");
+  const labelSet = container.querySelector(".vis-labelset");
+  const centerContent = centerPanel?.querySelector(".vis-content");
+  const foreground = centerPanel?.querySelector(".vis-foreground");
+  const background = centerPanel?.querySelector(".vis-background");
   const currentLines = container.querySelectorAll(".vis-current-time");
   if (!currentLines.length) return;
 
   const topHeight = topPanel ? topPanel.getBoundingClientRect().height : 0;
   const totalHeight = container.getBoundingClientRect().height;
-  const visibleHeight = Math.max(0, totalHeight - topHeight);
+  const visibleBodyHeight = Math.max(0, totalHeight - topHeight);
+  const contentHeight = Math.max(
+    visibleBodyHeight,
+    centerPanel?.scrollHeight || 0,
+    leftPanel?.scrollHeight || 0,
+    labelSet?.scrollHeight || 0,
+    centerContent?.scrollHeight || 0,
+    foreground?.scrollHeight || 0,
+    background?.scrollHeight || 0
+  );
 
   currentLines.forEach((line) => {
-    line.style.top = `${topHeight}px`;
-    line.style.height = `${visibleHeight}px`;
+    const parentPanel = line.closest(".vis-panel");
+    const isBodyPanelLine = parentPanel?.classList?.contains("vis-center");
+    line.style.top = isBodyPanelLine ? "0px" : `${topHeight}px`;
+    line.style.height = `${contentHeight}px`;
   });
 }
 
@@ -1277,6 +1294,13 @@ function setActiveZoomButton(mode) {
   updateNavCenterButtonLabel();
 }
 
+function setActiveSortButton(mode) {
+  const buttons = document.querySelectorAll(".sort-buttons button");
+  buttons.forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.sort === mode);
+  });
+}
+
 function setWindowForMode(mode, anchorDate = new Date()) {
   if (!timelineInstance) return;
 
@@ -1416,7 +1440,7 @@ export function renderMsProjectTimeline({ groups, items }) {
   });
 }
 
-export function bindTimelineToolbar() {
+export function bindTimelineToolbar({ onSortChange = null } = {}) {
   if (toolbarListenersBound) return;
   toolbarListenersBound = true;
 
@@ -1424,6 +1448,7 @@ export function bindTimelineToolbar() {
   const todayBtn = document.getElementById("btn-today");
   const nextBtn = document.getElementById("btn-next");
   const zoomButtons = document.querySelectorAll(".zoom-buttons button");
+  const sortButtons = document.querySelectorAll(".sort-buttons button");
 
   prevBtn?.addEventListener("click", () => {
     moveWindowByMode(-1);
@@ -1446,6 +1471,17 @@ export function bindTimelineToolbar() {
     });
   });
 
+  sortButtons.forEach((btn) => {
+    btn.addEventListener("click", (event) => {
+      const mode = event.currentTarget?.dataset?.sort;
+      if (!mode) return;
+      setActiveSortButton(mode);
+      if (typeof onSortChange === "function") {
+        onSortChange(mode);
+      }
+    });
+  });
+
   if (timelineInstance) {
     timelineInstance.on("rangechange", () => {
       updateDateRangeDisplay();
@@ -1462,6 +1498,7 @@ export function bindTimelineToolbar() {
 
   updateNavCenterButtonLabel();
   updateDateRangeDisplay();
+  setActiveSortButton("chronological");
 }
 
 export function clearMsProjectTimeline() {

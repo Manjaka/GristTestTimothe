@@ -166,7 +166,76 @@ function resolveProjectFilterColumn(rawRows, config) {
   ) || null;
 }
 
-export function buildTimelineDataFromMsProjectRows(rawRows, selectedProject = "") {
+function compareRowsChronologically(a, b) {
+  const aHasStart = a.startDate instanceof Date;
+  const bHasStart = b.startDate instanceof Date;
+  if (aHasStart && bHasStart && a.startDate.valueOf() !== b.startDate.valueOf()) {
+    return a.startDate - b.startDate;
+  }
+
+  if (aHasStart !== bHasStart) {
+    return aHasStart ? -1 : 1;
+  }
+
+  const aHasEnd = a.endDate instanceof Date;
+  const bHasEnd = b.endDate instanceof Date;
+  if (aHasEnd && bHasEnd && a.endDate.valueOf() !== b.endDate.valueOf()) {
+    return a.endDate - b.endDate;
+  }
+
+  if (aHasEnd !== bHasEnd) {
+    return aHasEnd ? -1 : 1;
+  }
+
+  return a.sourceIndex - b.sourceIndex;
+}
+
+function parsePlanningNumber(value) {
+  const text = toText(value);
+  if (!text) return null;
+  const number = Number(text.replace(",", "."));
+  return Number.isFinite(number) ? number : null;
+}
+
+function compareRowsByPlanningNumber(a, b) {
+  const aPlanningNumber = toText(a.uniqueNumberLabel);
+  const bPlanningNumber = toText(b.uniqueNumberLabel);
+  const aNumber = parsePlanningNumber(aPlanningNumber);
+  const bNumber = parsePlanningNumber(bPlanningNumber);
+  const aIsNumeric = aNumber != null;
+  const bIsNumeric = bNumber != null;
+
+  if (aIsNumeric && bIsNumeric && aNumber !== bNumber) {
+    return aNumber - bNumber;
+  }
+
+  if (aIsNumeric !== bIsNumeric) {
+    return aIsNumeric ? -1 : 1;
+  }
+
+  if (!aIsNumeric && !bIsNumeric) {
+    const textCompare = aPlanningNumber.localeCompare(bPlanningNumber, "fr", {
+      numeric: true,
+      sensitivity: "base",
+    });
+    if (textCompare !== 0) return textCompare;
+  }
+
+  return a.sourceIndex - b.sourceIndex;
+}
+
+function compareRowsBySortMode(a, b, sortMode) {
+  if (sortMode === "planning-number") {
+    return compareRowsByPlanningNumber(a, b);
+  }
+  return compareRowsChronologically(a, b);
+}
+
+export function buildTimelineDataFromMsProjectRows(
+  rawRows,
+  selectedProject = "",
+  sortMode = "chronological"
+) {
   const config = APP_CONFIG.grist.msProjectTable;
   const columns = config.columns;
   const projectFilterColumn = resolveProjectFilterColumn(rawRows, config);
@@ -191,6 +260,7 @@ export function buildTimelineDataFromMsProjectRows(rawRows, selectedProject = ""
     return {
       rowId: rawRow[columns.id] ?? index + 1,
       id: uniqueNumber || toText(rawRow[columns.id]) || String(index + 1),
+      uniqueNumberLabel: uniqueNumber,
       task,
       startDate,
       endDate,
@@ -219,29 +289,7 @@ export function buildTimelineDataFromMsProjectRows(rawRows, selectedProject = ""
     rows = rows.filter((row) => row.projectLabel === selectedProject);
   }
 
-  rows.sort((a, b) => {
-    const aHasStart = a.startDate instanceof Date;
-    const bHasStart = b.startDate instanceof Date;
-    if (aHasStart && bHasStart && a.startDate.valueOf() !== b.startDate.valueOf()) {
-      return a.startDate - b.startDate;
-    }
-
-    if (aHasStart !== bHasStart) {
-      return aHasStart ? -1 : 1;
-    }
-
-    const aHasEnd = a.endDate instanceof Date;
-    const bHasEnd = b.endDate instanceof Date;
-    if (aHasEnd && bHasEnd && a.endDate.valueOf() !== b.endDate.valueOf()) {
-      return a.endDate - b.endDate;
-    }
-
-    if (aHasEnd !== bHasEnd) {
-      return aHasEnd ? -1 : 1;
-    }
-
-    return a.sourceIndex - b.sourceIndex;
-  });
+  rows.sort((a, b) => compareRowsBySortMode(a, b, sortMode));
 
   const groups = [];
   const items = [];

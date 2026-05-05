@@ -43,6 +43,7 @@ body * {
 
 .nav-buttons,
 .zoom-buttons,
+.sort-buttons,
 .filters {
   display: flex;
   align-items: center;
@@ -78,6 +79,13 @@ body * {
   background: var(--panel-selection);
   border-color: #93c5fd;
   font-weight: 600;
+}
+
+.sort-buttons button {
+  flex: 0 0 auto;
+  min-width: max-content;
+  padding: 0 14px;
+  white-space: nowrap;
 }
 
 #toolbar select {
