@@ -509,6 +509,11 @@ export async function syncPlanningDemarrageFromMsProjectStart(
   const msRows = await fetchTableRows(msTable.sourceTable);
   const msIdCol = msTable.columns?.id || "id";
   const msUniqueCol = msTable.columns?.uniqueNumber;
+  const msSourceNameCol = resolveColumn(
+    msRows,
+    msTable.columns?.sourceName || "Nom",
+    msTable.sourceNameCandidates || ["Nom"]
+  );
 
   if (!msUniqueCol) {
     throw new Error("Colonne Numero_Unique non configuree dans MsProject.");
@@ -520,6 +525,7 @@ export async function syncPlanningDemarrageFromMsProjectStart(
   }
 
   const msUniqueValue = msRow[msUniqueCol];
+  const msXmlName = msSourceNameCol ? toText(msRow[msSourceNameCol]) : "";
   if (msUniqueValue == null || msUniqueValue === "") {
     return { updatedCount: 0, matchedCount: 0, skipped: true };
   }
@@ -530,6 +536,11 @@ export async function syncPlanningDemarrageFromMsProjectStart(
     planningRows,
     planningTable.columns?.linePlanning,
     planningTable.linePlanningCandidates || []
+  );
+  const planningNomXmlCol = resolveColumn(
+    planningRows,
+    planningTable.columns?.nomXml,
+    planningTable.nomXmlCandidates || []
   );
   const planningDemarrageCol = resolveColumn(
     planningRows,
@@ -577,7 +588,9 @@ export async function syncPlanningDemarrageFromMsProjectStart(
   }
 
   const matchingRows = planningRows.filter((row) => {
-    return equalsByTextOrNumber(row[planningLineCol], msUniqueValue);
+    if (!equalsByTextOrNumber(row[planningLineCol], msUniqueValue)) return false;
+    if (!planningNomXmlCol || !msXmlName) return true;
+    return toText(row[planningNomXmlCol]) === msXmlName;
   });
 
   if (!matchingRows.length) {

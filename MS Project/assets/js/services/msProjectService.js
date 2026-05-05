@@ -259,6 +259,7 @@ export function buildTimelineDataFromMsProjectRows(rawRows, selectedProject = ""
       endLabel: row.end,
       startIso: row.startIso,
       endIso: row.endIso,
+      xmlNameLabel: row.projectLabel,
       durationLabel: row.durationLabel,
       teamLabel: row.teamLabel,
       styleLabel: row.barStyleLabel,

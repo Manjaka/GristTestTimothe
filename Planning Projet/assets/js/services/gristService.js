@@ -347,6 +347,7 @@ function buildCoffragePlanningLinkResetActions(rows, {
   projectCol,
   typeDocCol,
   linePlanningCol,
+  nomXmlCol,
   demarrageCol,
   tableName,
   zoneValue,
@@ -374,6 +375,10 @@ function buildCoffragePlanningLinkResetActions(rows, {
       const updates = {};
       if (hasPlanningLinkValue(row?.[linePlanningCol])) {
         updates[linePlanningCol] = null;
+      }
+
+      if (nomXmlCol && toText(row?.[nomXmlCol])) {
+        updates[nomXmlCol] = null;
       }
 
       const currentDemarrageValue = row?.[demarrageCol];
@@ -950,6 +955,7 @@ export async function updatePlanningLignePlanning(rowId, lignePlanningValue) {
 export async function updatePlanningFromMsProjectDrop({
   rowId,
   uniqueNumber,
+  xmlName = "",
   msStartIso = "",
   msEndIso = "",
 }) {
@@ -970,6 +976,7 @@ export async function updatePlanningFromMsProjectDrop({
   }
 
   const lignePlanningField = String(columns.lignePlanning || "Ligne_planning").trim();
+  const nomXmlField = String(columns.nomXml || "Nom_XML").trim();
   const idCol = columns.id || "id";
   const groupCol = String(columns.groupe || "Groupe").trim();
   const zoneCol = String(columns.zone || "Zone").trim();
@@ -1006,6 +1013,9 @@ export async function updatePlanningFromMsProjectDrop({
   const updates = {
     [lignePlanningField]: normalizedUniqueNumber,
   };
+  if (nomXmlField) {
+    updates[nomXmlField] = toText(xmlName);
+  }
 
   if (isCoffrageTypeDoc(typeDoc)) {
     let demarrageDate = droppedStartDate || parseCalendarDate(currentRow[demarrageCol]);
@@ -1091,6 +1101,7 @@ export async function updatePlanningFromMsProjectDrop({
 
   if (isCoffrageTypeDoc(typeDoc) && groupHasArmatures) {
     updates[lignePlanningField] = null;
+    if (nomXmlField) updates[nomXmlField] = null;
     updates[demarrageCol] = null;
   }
 
@@ -1110,6 +1121,7 @@ export async function updatePlanningFromMsProjectDrop({
         projectCol,
         typeDocCol,
         linePlanningCol: lignePlanningField,
+        nomXmlCol: nomXmlField,
         demarrageCol,
         tableName: table.sourceTable,
         zoneValue: currentZone,

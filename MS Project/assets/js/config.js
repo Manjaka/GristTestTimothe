@@ -48,6 +48,7 @@ export const APP_CONFIG = {
         id: "id",
         projectLink: "NomProjet",
         linePlanning: "Ligne_planning",
+        nomXml: "Nom_XML",
         demarragesTravaux: "Demarrages_travaux",
       },
       projectLinkCandidates: [
@@ -60,6 +61,10 @@ export const APP_CONFIG = {
       linePlanningCandidates: [
         "Ligne_planning",
         "LignePlanning",
+      ],
+      nomXmlCandidates: [
+        "Nom_XML",
+        "NomXml",
       ],
       demarrageCandidates: [
         "Demarrages_travaux",

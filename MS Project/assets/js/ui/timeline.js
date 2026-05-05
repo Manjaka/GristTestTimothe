@@ -663,6 +663,7 @@ function buildMsProjectRowDragPayload(rowEl) {
     rowId: Number.isInteger(rowId) && rowId > 0 ? rowId : null,
     uniqueNumber,
     task: String(rowEl.dataset.msTask ?? "").trim(),
+    xmlName: String(rowEl.dataset.msXmlName ?? "").trim(),
     startIso: String(rowEl.dataset.msStartIso ?? "").trim(),
     endIso: String(rowEl.dataset.msEndIso ?? "").trim(),
   };
@@ -1109,6 +1110,7 @@ function buildGroupLabelElement(group) {
   row.dataset.msRowId = String(group?.rowId ?? "");
   row.dataset.msUniqueNumber = String(group?.idLabel ?? "");
   row.dataset.msTask = String(group?.taskLabel ?? "");
+  row.dataset.msXmlName = String(group?.xmlNameLabel ?? "");
   row.dataset.msStartIso = String(group?.startIso ?? "");
   row.dataset.msEndIso = String(group?.endIso ?? "");
   if (group?.isTitleRow) {

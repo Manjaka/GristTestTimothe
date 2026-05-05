@@ -471,6 +471,7 @@ async function handleMsProjectRowDrop({
   const taskSuffix = toText(targetTask) ? ` (${toText(targetTask)})` : "";
   const droppedStartIso = toText(payload?.startIso || "");
   const droppedEndIso = toText(payload?.endIso || "");
+  const droppedXmlName = toText(payload?.xmlName || "");
   const droppedDateLabel =
     droppedStartIso && droppedEndIso
       ? `${droppedStartIso} -> ${droppedEndIso}`
@@ -482,6 +483,7 @@ async function handleMsProjectRowDrop({
     await updatePlanningFromMsProjectDrop({
       rowId: targetRowId,
       uniqueNumber: normalizedUniqueNumber,
+      xmlName: droppedXmlName,
       msStartIso: droppedStartIso,
       msEndIso: droppedEndIso,
     });

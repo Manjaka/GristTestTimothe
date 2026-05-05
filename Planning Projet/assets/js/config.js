@@ -21,6 +21,7 @@ export const APP_CONFIG = {
         zone: "Zone",
         typeDoc: "Type_doc",
         lignePlanning: "Ligne_planning",
+        nomXml: "Nom_XML",
         dateLimite: "Date_limite",
         duree1: "Duree_1",
         diffCoffrage: "Diff_coffrage",
