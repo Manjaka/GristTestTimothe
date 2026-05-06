@@ -4,4 +4,7 @@ __pycache__/
 venv/
 logs/*.log
 config.json
-
+build/
+dist/
+*.spec
+src/access_grist_importer/_embedded_config.py

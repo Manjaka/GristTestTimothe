@@ -34,6 +34,13 @@ pip install -r requirements.txt
 python app.py
 ```
 
+L'application ouvre une fenetre avec :
+
+- un bouton pour choisir le fichier `.accdb` ;
+- un bouton `Analyser / Simuler` ou `Importer dans Grist` selon `dry_run` ;
+- une barre de progression pendant la lecture Access et le transfert Grist ;
+- un resume des lignes lues, preparees, ignorees, supprimees et inserees.
+
 ## Configuration
 
 Copier `config.example.json` vers `config.json`, puis renseigner :
@@ -73,6 +80,31 @@ En depannage local uniquement, `grist.verify_ssl` peut etre mis a `false`.
 ```powershell
 .\.venv\Scripts\python.exe -m unittest discover -s tests
 ```
+
+## Export `.exe`
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install pyinstaller
+.\.venv\Scripts\python.exe build_exe.py
+```
+
+Le script lit `config.json`, l'embarque dans l'application, puis cree
+`dist/ImportAccessGrist.exe`.
+
+Pour l'envoyer a quelqu'un, fournir seulement :
+
+```text
+ImportAccessGrist/
+  ImportAccessGrist.exe
+```
+
+En mode `.exe`, l'application lit d'abord un eventuel `config.json` place a
+cote de l'executable, puis utilise la config embarquee si aucun fichier externe
+n'est present. En mode developpement, elle garde le comportement actuel et lit
+`config.json` a la racine de `import-access-grist`.
+
+Attention : embarquer la config veut dire que la cle API est incluse dans le
+`.exe`. Utiliser une cle dediee et limitee au besoin d'import.
 
 ## Notes
 

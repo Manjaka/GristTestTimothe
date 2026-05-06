@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -30,10 +31,39 @@ class Settings:
     import_options: ImportConfig
 
 
+def get_config_candidates() -> list[Path]:
+    candidates: list[Path] = []
+
+    if getattr(sys, "frozen", False):
+        executable_dir = Path(sys.executable).resolve().parent
+        candidates.append(executable_dir / "config.json")
+        candidates.append(executable_dir / "config.example.json")
+
+    candidates.extend([CONFIG_PATH, CONFIG_EXAMPLE_PATH])
+    return candidates
+
+
+def resolve_config_path() -> Path:
+    for candidate in get_config_candidates():
+        if candidate.exists():
+            return candidate
+
+    return CONFIG_EXAMPLE_PATH
+
+
 def _read_config() -> dict[str, Any]:
-    config_path = CONFIG_PATH if CONFIG_PATH.exists() else CONFIG_EXAMPLE_PATH
-    with config_path.open("r", encoding="utf-8") as file:
-        return json.load(file)
+    for config_path in get_config_candidates():
+        if config_path.exists():
+            with config_path.open("r", encoding="utf-8") as file:
+                return json.load(file)
+
+    try:
+        from ._embedded_config import CONFIG
+    except ImportError:
+        with CONFIG_EXAMPLE_PATH.open("r", encoding="utf-8") as file:
+            return json.load(file)
+
+    return dict(CONFIG)
 
 
 def load_settings() -> Settings:

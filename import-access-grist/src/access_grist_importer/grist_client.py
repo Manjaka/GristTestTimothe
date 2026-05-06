@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Callable
 
 import requests
 from requests import HTTPError
 
 
 DEFAULT_CHUNK_SIZE = 500
+ProgressCallback = Callable[[str, int, int, str], None]
 
 
 @dataclass(frozen=True)
@@ -67,7 +68,14 @@ class GristClient:
             f"/tables/{table_id}/records"
         )
 
-    def fetch_records(self, table_id: str) -> list[dict[str, Any]]:
+    def fetch_records(
+        self,
+        table_id: str,
+        on_progress: ProgressCallback | None = None,
+    ) -> list[dict[str, Any]]:
+        if on_progress:
+            on_progress("fetch", 0, 0, f"Lecture Grist {table_id}")
+
         response = requests.get(
             self.records_url(table_id),
             headers=self._headers(),
@@ -77,9 +85,22 @@ class GristClient:
         response.raise_for_status()
         payload = response.json()
         records = payload.get("records", [])
-        return records if isinstance(records, list) else []
+        normalized_records = records if isinstance(records, list) else []
+        if on_progress:
+            on_progress(
+                "fetch",
+                len(normalized_records),
+                len(normalized_records),
+                f"Lecture Grist {table_id} terminee",
+            )
+        return normalized_records
 
-    def delete_records(self, table_id: str, record_ids: list[int]) -> None:
+    def delete_records(
+        self,
+        table_id: str,
+        record_ids: list[int],
+        on_progress: ProgressCallback | None = None,
+    ) -> None:
         ids: list[int] = []
         for record_id in record_ids:
             try:
@@ -90,8 +111,11 @@ class GristClient:
                 ids.append(normalized_id)
 
         if not ids:
+            if on_progress:
+                on_progress("delete", 0, 0, "Aucune ligne TimeReal a supprimer")
             return
 
+        deleted_count = 0
         for start_index in range(0, len(ids), DEFAULT_CHUNK_SIZE):
             chunk = ids[start_index : start_index + DEFAULT_CHUNK_SIZE]
             try:
@@ -116,6 +140,15 @@ class GristClient:
                 )
                 response.raise_for_status()
 
+            deleted_count += len(chunk)
+            if on_progress:
+                on_progress(
+                    "delete",
+                    deleted_count,
+                    len(ids),
+                    f"Suppression TimeReal {deleted_count}/{len(ids)}",
+                )
+
     def data_delete_url(self, table_id: str) -> str:
         self._validate_config()
         if not table_id:
@@ -127,8 +160,15 @@ class GristClient:
             f"/tables/{table_id}/data/delete"
         )
 
-    def add_records(self, table_id: str, records: list[dict[str, Any]]) -> dict[str, Any]:
+    def add_records(
+        self,
+        table_id: str,
+        records: list[dict[str, Any]],
+        on_progress: ProgressCallback | None = None,
+    ) -> dict[str, Any]:
         if not records:
+            if on_progress:
+                on_progress("insert", 0, 0, "Aucune ligne TimeReal a inserer")
             return {"records": []}
 
         created_records: list[dict[str, Any]] = []
@@ -151,5 +191,12 @@ class GristClient:
             response.raise_for_status()
             payload = response.json()
             created_records.extend(payload.get("records", []))
+            if on_progress:
+                on_progress(
+                    "insert",
+                    min(start_index + len(chunk), len(records)),
+                    len(records),
+                    f"Insertion TimeReal {min(start_index + len(chunk), len(records))}/{len(records)}",
+                )
 
         return {"records": created_records}
