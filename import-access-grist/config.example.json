@@ -1,0 +1,15 @@
+{
+  "grist": {
+    "server_url": "https://docs.getgrist.com",
+    "api_key": "",
+    "doc_id": "",
+    "table_id": "TimeReal"
+  },
+  "access": {
+    "source_table": ""
+  },
+  "import": {
+    "dry_run": true
+  }
+}
+
