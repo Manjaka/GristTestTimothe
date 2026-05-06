@@ -2,11 +2,7 @@ import { DEBUG_DISABLE_STICKY_SHELL } from "./constants.js";
 import { dom } from "./dom.js";
 import { state } from "./state.js";
 import { bindPlanningLayoutDebug, schedulePlanningLayoutDebug } from "../layout/debugLayout.js";
-import {
-  resetOverviewFramePresentation,
-  scheduleExpensesFramePresentation,
-  scheduleOverviewFramePresentation,
-} from "../layout/framePresentation.js";
+import { scheduleExpensesFramePresentation } from "../layout/framePresentation.js";
 import {
   applyPlanningFrameHeight,
   bindPlanningFrameResizeHandle,
@@ -22,11 +18,7 @@ import {
   setSelectionWarning,
   showPlanningWarningsPopup,
 } from "../layout/shell.js";
-import {
-  attachExpensesFrameApi,
-  attachOverviewFrameApi,
-  waitForChildApi,
-} from "../services/childApi.js";
+import { attachExpensesFrameApi, waitForChildApi } from "../services/childApi.js";
 import { applySharedProject, clearSharedProjectSelection } from "../services/projectSync.js";
 import { bindExpensesPlanningShellControls, handleViewportChange } from "../services/viewportSync.js";
 
@@ -37,16 +29,6 @@ function applyDebugBodyClass() {
 }
 
 function bindFrameLoadListeners() {
-  dom.overviewFrameEl?.addEventListener("load", () => {
-    state.overviewApi = null;
-    state.overviewProjectSubscriptionCleanup?.();
-    state.overviewProjectSubscriptionCleanup = null;
-    state.overviewProjectSubscriptionApi = null;
-    resetOverviewFramePresentation();
-    scheduleOverviewFramePresentation();
-    void attachOverviewFrameApi({ force: true });
-  });
-
   dom.expensesFrameEl?.addEventListener("load", () => {
     state.expensesApi = null;
     state.expensesViewportSubscriptionApi = null;
@@ -84,7 +66,6 @@ export async function bootstrapHubApp() {
     ]);
 
     bindExpensesPlanningShellControls();
-    scheduleOverviewFramePresentation();
     scheduleExpensesFramePresentation();
     bindPlanningLayoutDebug();
     bindFrameLoadListeners();
@@ -142,7 +123,6 @@ export async function bootstrapHubApp() {
     state.planningAxisApi.subscribeViewportChange((payload) =>
       handleViewportChange({ ...payload, app: "planning-projet-axis" })
     );
-    void attachOverviewFrameApi();
 
     if (dom.projectSelectEl instanceof HTMLSelectElement) {
       dom.projectSelectEl.addEventListener("change", () => {

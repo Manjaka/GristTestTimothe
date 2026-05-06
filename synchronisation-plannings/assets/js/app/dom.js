@@ -1,6 +1,5 @@
 export function getHubDom() {
   return {
-    overviewFrameEl: document.getElementById("gestion-depenses2-overview-frame"),
     planningFrameEl: document.getElementById("planning-projet-frame"),
     planningAxisFrameEl: document.getElementById("planning-projet-axis-frame"),
     expensesFrameEl: document.getElementById("gestion-depenses2-frame"),
@@ -20,7 +19,6 @@ export function getHubDom() {
     planningWarningsModalListEl: document.getElementById("planning-warnings-modal-list"),
     projectSelectEl: document.getElementById("shared-project-select"),
     projectEmptyStateEl: document.getElementById("project-empty-state"),
-    workspaceCardSectionEl: document.getElementById("workspace-card-section"),
     syncPlanningCardSectionEl: document.getElementById("sync-planning-card-section"),
     statusValueEl: document.getElementById("hub-status-value"),
     lastSourceValueEl: document.getElementById("last-source-value"),

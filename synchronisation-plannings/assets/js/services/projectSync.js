@@ -1,8 +1,5 @@
 import { getReferencePlanningApi, state } from "../app/state.js";
-import {
-  scheduleExpensesFramePresentation,
-  scheduleOverviewFramePresentation,
-} from "../layout/framePresentation.js";
+import { scheduleExpensesFramePresentation } from "../layout/framePresentation.js";
 import {
   appendLog,
   closePlanningWarningsPopup,
@@ -58,7 +55,6 @@ function buildPlanningSelectionAnchorViewport(viewport = {}) {
 export function clearSharedProjectSelection() {
   state.activeProjectKey = "";
   state.requestedProjectKey = "";
-  state.allowChildProjectSelectionSync = false;
   state.lastPlanningWarningsPopupSignature = "";
   state.lastAppliedViewportLogicalSignature = "";
   state.sharedViewportState = null;
@@ -81,7 +77,6 @@ export async function applySharedProject(projectKey) {
   }
 
   state.requestedProjectKey = normalizedProjectKey;
-  state.allowChildProjectSelectionSync = true;
   state.lastPlanningWarningsPopupSignature = "";
   closePlanningWarningsPopup();
   state.projectSyncInProgress = true;
@@ -92,7 +87,6 @@ export async function applySharedProject(projectKey) {
   syncSharedPlanningControlsAvailability();
 
   try {
-    scheduleOverviewFramePresentation();
     scheduleExpensesFramePresentation();
     await waitForAnimationFrame();
 
@@ -101,16 +95,12 @@ export async function applySharedProject(projectKey) {
       Promise.resolve(state.planningAxisApi?.setSelectedProject?.(normalizedProjectKey)),
     ];
 
-    if (state.overviewApi?.setSelectedProject) {
-      projectApplyCalls.push(Promise.resolve(state.overviewApi.setSelectedProject(normalizedProjectKey)));
-    }
     if (state.expensesApi?.setSelectedProject) {
       projectApplyCalls.push(Promise.resolve(state.expensesApi.setSelectedProject(normalizedProjectKey)));
     }
     await Promise.all(projectApplyCalls);
     state.activeProjectKey = normalizedProjectKey;
     setActiveProjectSelection(normalizedProjectKey);
-    scheduleOverviewFramePresentation();
     scheduleExpensesFramePresentation();
 
     const referencePlanningApi = getReferencePlanningApi() || state.planningApi;

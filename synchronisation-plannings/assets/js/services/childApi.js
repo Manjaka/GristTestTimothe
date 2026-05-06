@@ -4,14 +4,8 @@ import {
 } from "../app/constants.js";
 import { dom } from "../app/dom.js";
 import { getReferencePlanningApi, state } from "../app/state.js";
+import { scheduleExpensesFramePresentation } from "../layout/framePresentation.js";
 import {
-  resetOverviewFramePresentation,
-  scheduleExpensesFramePresentation,
-  scheduleOverviewFramePresentation,
-} from "../layout/framePresentation.js";
-import {
-  appendLog,
-  setHubStatus,
   setLastRange,
   syncExpensesPlanningShell,
   syncSharedPlanningControlsAvailability,
@@ -25,9 +19,7 @@ import { syncPlanningViewportBounds } from "../viewport/bounds.js";
 import {
   getDesiredProjectKey,
   getViewportLogicalSignature,
-  normalizeProjectKey,
 } from "../viewport/normalize.js";
-import { applySharedProject } from "./projectSync.js";
 import { flushViewportSyncQueue, handleViewportChange } from "./viewportSync.js";
 
 export function sleep(ms) {
@@ -98,88 +90,6 @@ export function getLateAttachReferenceViewport() {
   }
 
   return buildCanonicalSharedViewport(baseViewport);
-}
-
-export async function attachOverviewFrameApi({ force = false } = {}) {
-  if (!(dom.overviewFrameEl instanceof HTMLIFrameElement)) {
-    return null;
-  }
-
-  if (!force && state.overviewFrameAttachPromise) {
-    return state.overviewFrameAttachPromise;
-  }
-
-  const attachAttempt = ++state.overviewFrameAttachAttempt;
-  syncSharedPlanningControlsAvailability();
-  state.overviewFrameAttachPromise = waitForChildApi(
-    dom.overviewFrameEl,
-    "__gestionDepenses2PlanningSyncApi"
-  )
-    .then(async (api) => {
-      if (attachAttempt !== state.overviewFrameAttachAttempt) {
-        return api;
-      }
-
-      state.overviewApi = api;
-      scheduleOverviewFramePresentation();
-
-      const targetProjectKey = getDesiredProjectKey();
-      if (targetProjectKey) {
-        await Promise.resolve(api.setSelectedProject(targetProjectKey));
-      }
-
-      scheduleOverviewFramePresentation();
-
-      if (state.overviewProjectSubscriptionApi !== api) {
-        state.overviewProjectSubscriptionCleanup?.();
-        state.overviewProjectSubscriptionCleanup = null;
-
-        if (typeof api.subscribeProjectChange === "function") {
-          state.overviewProjectSubscriptionCleanup = api.subscribeProjectChange((payload) => {
-            if (!state.allowChildProjectSelectionSync) {
-              return;
-            }
-
-            const nextProjectKey = String(payload?.projectKey || payload || "").trim();
-            if (!nextProjectKey) {
-              return;
-            }
-
-            const currentProjectKey = String(
-              state.requestedProjectKey || state.activeProjectKey || ""
-            ).trim();
-            if (normalizeProjectKey(nextProjectKey) === normalizeProjectKey(currentProjectKey)) {
-              return;
-            }
-
-            scheduleOverviewFramePresentation();
-            applySharedProject(nextProjectKey).catch((error) => {
-              console.error("Erreur synchronisation projet depuis overview :", error);
-              setHubStatus(`Erreur projet : ${error.message}`);
-              appendLog(`Erreur projet overview : ${error.message}`);
-            });
-          });
-        }
-
-        state.overviewProjectSubscriptionApi = api;
-      }
-
-      return api;
-    })
-    .catch((error) => {
-      if (attachAttempt === state.overviewFrameAttachAttempt) {
-        console.error("Erreur attache du cockpit projet :", error);
-      }
-      return null;
-    })
-    .finally(() => {
-      if (attachAttempt === state.overviewFrameAttachAttempt) {
-        state.overviewFrameAttachPromise = null;
-        syncSharedPlanningControlsAvailability();
-      }
-    });
-
-  return state.overviewFrameAttachPromise;
 }
 
 export async function attachExpensesFrameApi({ force = false } = {}) {

@@ -1,6 +1,5 @@
 import { dom } from "../app/dom.js";
 import { state } from "../app/state.js";
-import { DEFAULT_OVERVIEW_FRAME_MIN_HEIGHT } from "../app/constants.js";
 import { getCurrentSharedViewport } from "../viewport/build.js";
 import {
   calibrateExpensesViewportPixelOffset,
@@ -43,97 +42,6 @@ function summarizeExpensesFrameViewport(viewport = {}) {
 function traceExpensesFramePresentation(event, details = {}) {
   expensesFrameTraceSequence += 1;
   console.info(`[sync-trace][hub-expenses-frame][${expensesFrameTraceSequence}] ${event}`, details);
-}
-
-function cleanupOverviewFrameResizeObserver() {
-  if (typeof state.overviewFrameResizeCleanup === "function") {
-    state.overviewFrameResizeCleanup();
-  }
-
-  state.overviewFrameResizeCleanup = null;
-  state.overviewFrameResizeDocument = null;
-}
-
-function ensureOverviewFrameResizeObserver(frameDocument) {
-  if (!frameDocument || state.overviewFrameResizeDocument === frameDocument) {
-    return;
-  }
-
-  cleanupOverviewFrameResizeObserver();
-
-  const frameWindow = dom.overviewFrameEl?.contentWindow;
-  const ResizeObserverCtor = frameWindow?.ResizeObserver;
-  const observedElements = [
-    frameDocument.querySelector(".header"),
-    frameDocument.querySelector(".container"),
-    frameDocument.body,
-    frameDocument.documentElement,
-  ].filter(Boolean);
-
-  if (typeof ResizeObserverCtor !== "function" || observedElements.length === 0) {
-    state.overviewFrameResizeDocument = frameDocument;
-    return;
-  }
-
-  const resizeObserver = new ResizeObserverCtor(() => {
-    scheduleOverviewFramePresentation(1);
-  });
-
-  observedElements.forEach((element) => {
-    resizeObserver.observe(element);
-  });
-
-  state.overviewFrameResizeCleanup = () => {
-    resizeObserver.disconnect();
-  };
-  state.overviewFrameResizeDocument = frameDocument;
-}
-
-export function resetOverviewFramePresentation() {
-  window.clearTimeout(state.overviewFramePresentationTimer);
-  cleanupOverviewFrameResizeObserver();
-}
-
-export function ensureOverviewFramePresentation() {
-  const frameDocument = dom.overviewFrameEl?.contentDocument;
-  if (!frameDocument?.body) {
-    return false;
-  }
-
-  ensureOverviewFrameResizeObserver(frameDocument);
-
-  const measuredHeight = Math.max(
-    DEFAULT_OVERVIEW_FRAME_MIN_HEIGHT,
-    Math.ceil(
-      Math.max(
-        frameDocument.documentElement?.scrollHeight || 0,
-        frameDocument.body?.scrollHeight || 0,
-        frameDocument.querySelector(".header")?.scrollHeight || 0,
-        frameDocument.querySelector(".main-content")?.scrollHeight || 0
-      )
-    ) + 8
-  );
-
-  if (dom.overviewFrameEl instanceof HTMLIFrameElement) {
-    dom.overviewFrameEl.style.height = `${measuredHeight}px`;
-    dom.overviewFrameEl.style.minHeight = `${measuredHeight}px`;
-  }
-
-  dom.overviewFrameEl?.classList.add("is-ready");
-  return true;
-}
-
-export function scheduleOverviewFramePresentation(attempt = 0) {
-  window.clearTimeout(state.overviewFramePresentationTimer);
-  state.overviewFramePresentationTimer = window.setTimeout(() => {
-    const applied = ensureOverviewFramePresentation();
-    if (applied || attempt >= 20) {
-      dom.overviewFrameEl?.classList.add("is-ready");
-      return;
-    }
-
-    scheduleOverviewFramePresentation(attempt + 1);
-  }, attempt === 0 ? 0 : 120);
 }
 
 export function ensureExpensesFramePresentation() {

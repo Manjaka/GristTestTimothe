@@ -1,9 +1,6 @@
 import { dom } from "../app/dom.js";
 import { state } from "../app/state.js";
-import {
-  scheduleExpensesFramePresentation,
-  scheduleOverviewFramePresentation,
-} from "../layout/framePresentation.js";
+import { scheduleExpensesFramePresentation } from "../layout/framePresentation.js";
 import {
   appendLog,
   getViewportSourceApi,
@@ -288,14 +285,12 @@ export function bindExpensesPlanningShellControls() {
   });
 
   window.addEventListener("resize", () => {
-    scheduleOverviewFramePresentation();
     syncExpensesPlanningShell();
     scheduleExpensesFramePresentation();
   });
 
   if (window.visualViewport) {
     window.visualViewport.addEventListener("resize", () => {
-      scheduleOverviewFramePresentation();
       syncExpensesPlanningShell();
       scheduleExpensesFramePresentation();
     });
