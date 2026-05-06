@@ -1,6 +1,9 @@
 import { dom } from "../app/dom.js";
 import { state } from "../app/state.js";
-import { scheduleExpensesFramePresentation } from "../layout/framePresentation.js";
+import {
+  scheduleExpensesFramePresentation,
+  schedulePlanningFramePresentation,
+} from "../layout/framePresentation.js";
 import {
   appendLog,
   getViewportSourceApi,
@@ -26,6 +29,7 @@ import {
 } from "../viewport/normalize.js";
 
 let viewportSyncTraceSequence = 0;
+let expensesViewportSyncSequence = 0;
 
 function roundViewportTraceNumber(value, digits = 2) {
   const numericValue = Number(value);
@@ -91,6 +95,85 @@ function hasUsableViewport(viewport = {}) {
   );
 }
 
+function shouldMirrorViewportToExpenses(sourceApp = "") {
+  const normalizedSource = String(sourceApp || "").trim();
+  return (
+    normalizedSource === "Pilotage commun" ||
+    normalizedSource === "planning-projet-axis" ||
+    normalizedSource === "planning-projet-main"
+  );
+}
+
+function syncExpensesViewportInBackground(viewport = {}, { sourceApp = "" } = {}) {
+  const expensesApi = state.expensesApi;
+  if (!expensesApi?.applyViewport || !shouldMirrorViewportToExpenses(sourceApp)) {
+    return;
+  }
+
+  const viewportToApply = viewport && typeof viewport === "object" ? { ...viewport } : {};
+  const canonicalViewport = buildCanonicalSharedViewport(viewportToApply);
+  const viewportLogicalSignature = getViewportLogicalSignature(
+    state.activeProjectKey,
+    canonicalViewport
+  );
+  const syncSequence = ++expensesViewportSyncSequence;
+
+  traceViewportSync("expenses-background-queue", {
+    source: sourceApp,
+    viewportLogicalSignature,
+    viewport: summarizeViewportTrace(canonicalViewport),
+  });
+
+  Promise.resolve()
+    .then(async () => {
+      if (state.expensesApi !== expensesApi) {
+        return;
+      }
+
+      if (
+        viewportLogicalSignature &&
+        state.lastAppliedViewportLogicalSignature &&
+        viewportLogicalSignature !== state.lastAppliedViewportLogicalSignature
+      ) {
+        traceViewportSync("expenses-background-skip-stale", {
+          source: sourceApp,
+          viewportLogicalSignature,
+          lastAppliedViewportLogicalSignature: state.lastAppliedViewportLogicalSignature,
+        });
+        return;
+      }
+
+      await Promise.resolve(expensesApi.applyViewport(viewportToApply));
+
+      if (syncSequence !== expensesViewportSyncSequence || state.expensesApi !== expensesApi) {
+        return;
+      }
+
+      if (
+        viewportLogicalSignature &&
+        state.lastAppliedViewportLogicalSignature &&
+        viewportLogicalSignature !== state.lastAppliedViewportLogicalSignature
+      ) {
+        traceViewportSync("expenses-background-complete-stale", {
+          source: sourceApp,
+          viewportLogicalSignature,
+          lastAppliedViewportLogicalSignature: state.lastAppliedViewportLogicalSignature,
+        });
+        return;
+      }
+
+      scheduleExpensesFramePresentation();
+      traceViewportSync("expenses-background-complete", {
+        source: sourceApp,
+        viewportLogicalSignature,
+      });
+    })
+    .catch((error) => {
+      console.error("Erreur synchro differee gestion-depenses2 :", error);
+      appendLog(`Erreur synchro gestion-depenses2 : ${error.message}`);
+    });
+}
+
 async function runSharedToolbarViewportAction({
   actionLabel = "Pilotage commun",
   execute = null,
@@ -130,7 +213,12 @@ export async function applyViewportFromParentControls(
   viewport = {},
   { sourceLabel = "Pilotage commun" } = {}
 ) {
-  if (!state.planningApi || state.projectSyncInProgress || state.viewportSyncInProgress) {
+  if (
+    !state.planningApi ||
+    !state.planningAxisApi ||
+    state.projectSyncInProgress ||
+    state.viewportSyncInProgress
+  ) {
     syncSharedPlanningControlsAvailability();
     return;
   }
@@ -150,18 +238,16 @@ export async function applyViewportFromParentControls(
   try {
     const applyCalls = [
       Promise.resolve(state.planningApi.applyViewport(canonicalViewport)),
-      Promise.resolve(state.planningAxisApi?.applyViewport?.(canonicalViewport)),
+      Promise.resolve(state.planningAxisApi.applyViewport(canonicalViewport)),
     ];
-
-    if (state.expensesApi?.applyViewport) {
-      applyCalls.push(Promise.resolve(state.expensesApi.applyViewport(canonicalViewport)));
-    }
 
     await Promise.all(applyCalls);
 
     state.lastAppliedViewportLogicalSignature = viewportLogicalSignature;
     state.sharedViewportState = canonicalViewport;
     syncExpensesPlanningShell(canonicalViewport);
+    schedulePlanningFramePresentation();
+    syncExpensesViewportInBackground(canonicalViewport, { sourceApp: sourceLabel });
     setLastSource(getViewportSourceLabel(sourceLabel));
     setLastRange(canonicalViewport);
     setHubStatus(`Synchro active depuis ${getViewportSourceLabel(sourceLabel)}`);
@@ -286,12 +372,14 @@ export function bindExpensesPlanningShellControls() {
 
   window.addEventListener("resize", () => {
     syncExpensesPlanningShell();
+    schedulePlanningFramePresentation();
     scheduleExpensesFramePresentation();
   });
 
   if (window.visualViewport) {
     window.visualViewport.addEventListener("resize", () => {
       syncExpensesPlanningShell();
+      schedulePlanningFramePresentation();
       scheduleExpensesFramePresentation();
     });
   }
@@ -357,6 +445,9 @@ export async function flushViewportSyncQueue() {
     });
     state.sharedViewportState = canonicalViewport;
     syncExpensesPlanningShell(canonicalViewport);
+    schedulePlanningFramePresentation();
+    syncExpensesViewportInBackground(exactSharedViewport, { sourceApp: payload.app });
+    scheduleExpensesFramePresentation();
     void flushViewportSyncQueue();
     return;
   }
@@ -397,6 +488,9 @@ export async function flushViewportSyncQueue() {
     state.lastAppliedViewportLogicalSignature = viewportLogicalSignature;
     state.sharedViewportState = canonicalViewport;
     syncExpensesPlanningShell(canonicalViewport);
+    schedulePlanningFramePresentation();
+    syncExpensesViewportInBackground(exactSharedViewport, { sourceApp: payload.app });
+    scheduleExpensesFramePresentation();
     setLastSource(getViewportSourceLabel(payload.app));
     setLastRange(canonicalViewport);
     setHubStatus(`Synchro active depuis ${getViewportSourceLabel(payload.app)}`);

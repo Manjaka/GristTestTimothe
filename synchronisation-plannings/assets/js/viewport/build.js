@@ -248,8 +248,8 @@ export function getCurrentSharedViewport() {
   const referencePlanningApi = getReferencePlanningApi();
   const baseViewport =
     state.sharedViewportState ||
-    state.expensesApi?.getViewport?.() ||
     referencePlanningApi?.getViewport?.() ||
+    state.expensesApi?.getViewport?.() ||
     null;
 
   return baseViewport ? buildCanonicalSharedViewport(baseViewport) : null;

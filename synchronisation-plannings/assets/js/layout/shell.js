@@ -41,11 +41,11 @@ export function getViewportSourceApi(sourceApp = "") {
 
 export function getViewportTargetApis(sourceApp = "") {
   if (sourceApp === "planning-projet-axis") {
-    return [state.planningApi, state.expensesApi].filter(Boolean);
+    return [state.planningApi].filter(Boolean);
   }
 
   if (sourceApp === "planning-projet-main") {
-    return [state.planningAxisApi, state.expensesApi].filter(Boolean);
+    return [state.planningAxisApi].filter(Boolean);
   }
 
   if (sourceApp === "gestion-depenses2") {
@@ -114,14 +114,10 @@ export function setExpensesPlanningControlsDisabled(disabled = true) {
 export function isSharedPlanningControlsLocked() {
   const hasActiveProject = Boolean(String(state.activeProjectKey || "").trim());
   const planningReady = Boolean(state.planningApi && state.planningAxisApi);
-  const expensesReady = Boolean(state.expensesApi);
-  const criticalAttachInProgress = Boolean(state.expensesFrameAttachPromise);
 
   return (
     !hasActiveProject ||
     !planningReady ||
-    !expensesReady ||
-    criticalAttachInProgress ||
     state.projectSyncInProgress ||
     state.viewportSyncInProgress ||
     state.sharedToolbarActionInProgress

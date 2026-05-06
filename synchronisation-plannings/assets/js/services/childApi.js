@@ -4,7 +4,10 @@ import {
 } from "../app/constants.js";
 import { dom } from "../app/dom.js";
 import { getReferencePlanningApi, state } from "../app/state.js";
-import { scheduleExpensesFramePresentation } from "../layout/framePresentation.js";
+import {
+  scheduleExpensesFramePresentation,
+  schedulePlanningFramePresentation,
+} from "../layout/framePresentation.js";
 import {
   setLastRange,
   syncExpensesPlanningShell,
@@ -113,6 +116,7 @@ export async function attachExpensesFrameApi({ force = false } = {}) {
 
       state.expensesApi = api;
       syncSharedPlanningControlsAvailability();
+      schedulePlanningFramePresentation();
       scheduleExpensesFramePresentation();
 
       const targetProjectKey = getDesiredProjectKey();
@@ -142,6 +146,7 @@ export async function attachExpensesFrameApi({ force = false } = {}) {
         setLastRange(referenceViewport);
       }
 
+      schedulePlanningFramePresentation();
       scheduleExpensesFramePresentation();
 
       if (state.expensesViewportSubscriptionApi !== api) {

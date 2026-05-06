@@ -2951,6 +2951,19 @@ export function getPlanningViewportState() {
   };
 }
 
+export function refreshPlanningTimelineLayout() {
+  if (!timelineInstance) {
+    return null;
+  }
+
+  timelineInstance.redraw();
+  updateDateRangeDisplay();
+  updateNavCenterButtonLabel();
+  updateCurrentTimeLineBounds();
+  requestStickyAxisSync();
+  return getPlanningViewportState();
+}
+
 export function applyPlanningViewportState(viewport = {}) {
   if (!timelineInstance) {
     return Promise.resolve(null);
@@ -3464,7 +3477,7 @@ export function bindTimelineToolbar() {
   updateNavCenterButtonLabel();
   updateDateRangeDisplay();
   window.addEventListener("resize", () => {
-    updateDateRangeDisplay();
+    refreshPlanningTimelineLayout();
   });
 }
 

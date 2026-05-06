@@ -7,7 +7,10 @@ import {
 import { dom } from "../app/dom.js";
 import { state } from "../app/state.js";
 import { schedulePlanningLayoutDebug } from "./debugLayout.js";
-import { scheduleExpensesFramePresentation } from "./framePresentation.js";
+import {
+  scheduleExpensesFramePresentation,
+  schedulePlanningFramePresentation,
+} from "./framePresentation.js";
 
 export function clampPlanningFrameHeight(height) {
   const numericHeight = Number(height);
@@ -54,6 +57,7 @@ export function schedulePlanningFrameResizeRefresh(reason = "planning-frame-resi
 
   state.planningFrameResizeRefreshRafId = window.requestAnimationFrame(() => {
     state.planningFrameResizeRefreshRafId = 0;
+    schedulePlanningFramePresentation();
     scheduleExpensesFramePresentation();
     schedulePlanningLayoutDebug(reason);
   });

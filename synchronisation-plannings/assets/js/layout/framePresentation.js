@@ -44,19 +44,50 @@ function traceExpensesFramePresentation(event, details = {}) {
   console.info(`[sync-trace][hub-expenses-frame][${expensesFrameTraceSequence}] ${event}`, details);
 }
 
+export function ensurePlanningFramePresentation() {
+  const syncPlanningCardEl = document.querySelector(".sync-planning-card");
+  const planningWrapperEl = dom.planningFrameEl?.contentDocument?.getElementById("timelineWrapper");
+  if (!(syncPlanningCardEl instanceof HTMLElement) || !planningWrapperEl) {
+    return false;
+  }
+
+  const scrollbarShift = getPlanningMainScrollbarGutterWidth();
+  syncPlanningCardEl.style.setProperty("--sync-planning-scrollbar-shift", `${scrollbarShift}px`);
+
+  if (
+    !Number.isFinite(state.lastPlanningScrollbarShift) ||
+    Math.abs(scrollbarShift - state.lastPlanningScrollbarShift) > 0.25
+  ) {
+    state.lastPlanningScrollbarShift = scrollbarShift;
+    requestAnimationFrame(() => {
+      state.planningAxisApi?.refreshLayout?.();
+      state.planningApi?.refreshLayout?.();
+    });
+    schedulePlanningLayoutDebug("planning-scrollbar-shift");
+  }
+
+  return true;
+}
+
+export function schedulePlanningFramePresentation(attempt = 0) {
+  window.clearTimeout(state.planningFramePresentationTimer);
+  state.planningFramePresentationTimer = window.setTimeout(() => {
+    const applied = ensurePlanningFramePresentation();
+    if (applied || attempt >= 20) {
+      return;
+    }
+
+    schedulePlanningFramePresentation(attempt + 1);
+  }, attempt === 0 ? 0 : 120);
+}
+
 export function ensureExpensesFramePresentation() {
   const frameDocument = dom.expensesFrameEl?.contentDocument;
   if (!frameDocument?.head || !frameDocument?.body) {
     return false;
   }
 
-  const syncPlanningCardEl = document.querySelector(".sync-planning-card");
-  if (syncPlanningCardEl instanceof HTMLElement) {
-    syncPlanningCardEl.style.setProperty(
-      "--sync-planning-scrollbar-shift",
-      `${getPlanningMainScrollbarGutterWidth()}px`
-    );
-  }
+  ensurePlanningFramePresentation();
 
   const boardEl = frameDocument.getElementById("charge-plan-board");
   if (!boardEl) {

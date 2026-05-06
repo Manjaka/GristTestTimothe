@@ -370,6 +370,7 @@ body.planning-sync-axis-only #planningTimeline .vis-panel.vis-top:active {
 
 body.planning-sync-header-only {
   overflow: hidden !important;
+  overscroll-behavior: contain;
 }
 
 body.planning-sync-header-only #toolbar,
@@ -382,9 +383,9 @@ body.planning-sync-header-only #addZoneModal {
 body.planning-sync-header-only #timelineWrapper {
   height: 72px !important;
   min-height: 72px !important;
-  overflow-y: scroll !important;
-  overflow-x: hidden !important;
-  scrollbar-gutter: stable;
+  overflow: hidden !important;
+  scrollbar-gutter: auto;
+  overscroll-behavior: contain;
   border: 0 !important;
 }
 

@@ -22,6 +22,8 @@ export function createHubState() {
     lastPlanningLayoutDebugSignature: "",
     planningFrameResizeState: null,
     planningFrameResizeRefreshRafId: 0,
+    planningFramePresentationTimer: 0,
+    lastPlanningScrollbarShift: Number.NaN,
     expensesFrameAttachPromise: null,
     expensesFrameAttachAttempt: 0,
     expensesViewportSubscriptionApi: null,

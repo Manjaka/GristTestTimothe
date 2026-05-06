@@ -1,5 +1,8 @@
 import { getReferencePlanningApi, state } from "../app/state.js";
-import { scheduleExpensesFramePresentation } from "../layout/framePresentation.js";
+import {
+  scheduleExpensesFramePresentation,
+  schedulePlanningFramePresentation,
+} from "../layout/framePresentation.js";
 import {
   appendLog,
   closePlanningWarningsPopup,
@@ -15,7 +18,6 @@ import {
 } from "../layout/shell.js";
 import { alignExpensesViewportToPlanning } from "../viewport/alignment.js";
 import {
-  buildCanonicalSharedViewport,
   buildPlanningLedProjectSelectionViewport,
   buildProjectSelectionViewport,
   normalizeProjectDateBounds,
@@ -31,6 +33,8 @@ function waitForAnimationFrame() {
     requestAnimationFrame(() => resolve());
   });
 }
+
+let expensesProjectSyncSequence = 0;
 
 function buildPlanningSelectionAnchorViewport(viewport = {}) {
   if (!viewport || typeof viewport !== "object") {
@@ -50,6 +54,41 @@ function buildPlanningSelectionAnchorViewport(viewport = {}) {
     contentStartDate: "",
     contentStartMs: null,
   };
+}
+
+function syncExpensesProjectWhenReady(projectKey = "", viewport = null) {
+  const expensesApi = state.expensesApi;
+  const normalizedProjectKey = String(projectKey || "").trim();
+  if (!normalizedProjectKey || !expensesApi) {
+    return;
+  }
+
+  const syncSequence = ++expensesProjectSyncSequence;
+  Promise.resolve()
+    .then(async () => {
+      if (expensesApi.setSelectedProject) {
+        await Promise.resolve(expensesApi.setSelectedProject(normalizedProjectKey));
+      }
+
+      if (
+        syncSequence !== expensesProjectSyncSequence ||
+        String(state.activeProjectKey || "").trim() !== normalizedProjectKey
+      ) {
+        return;
+      }
+
+      if (viewport?.firstVisibleDate) {
+        await alignExpensesViewportToPlanning(viewport, {
+          onAfterApply: () => scheduleExpensesFramePresentation(),
+        });
+      }
+
+      scheduleExpensesFramePresentation();
+    })
+    .catch((error) => {
+      console.error("Erreur synchronisation differee gestion-depenses2 :", error);
+      appendLog(`Erreur synchro gestion-depenses2 : ${error.message}`);
+    });
 }
 
 export function clearSharedProjectSelection() {
@@ -87,6 +126,7 @@ export async function applySharedProject(projectKey) {
   syncSharedPlanningControlsAvailability();
 
   try {
+    schedulePlanningFramePresentation();
     scheduleExpensesFramePresentation();
     await waitForAnimationFrame();
 
@@ -95,12 +135,10 @@ export async function applySharedProject(projectKey) {
       Promise.resolve(state.planningAxisApi?.setSelectedProject?.(normalizedProjectKey)),
     ];
 
-    if (state.expensesApi?.setSelectedProject) {
-      projectApplyCalls.push(Promise.resolve(state.expensesApi.setSelectedProject(normalizedProjectKey)));
-    }
     await Promise.all(projectApplyCalls);
     state.activeProjectKey = normalizedProjectKey;
     setActiveProjectSelection(normalizedProjectKey);
+    schedulePlanningFramePresentation();
     scheduleExpensesFramePresentation();
 
     const referencePlanningApi = getReferencePlanningApi() || state.planningApi;
@@ -112,10 +150,7 @@ export async function applySharedProject(projectKey) {
     }
     const planningProjectDateBounds =
       referencePlanningApi.getProjectDateBounds?.() || state.planningApi.getProjectDateBounds?.() || null;
-    const expensesProjectDateBounds = state.expensesApi?.getProjectDateBounds?.() || null;
-    const referenceProjectDateBounds =
-      normalizeProjectDateBounds(planningProjectDateBounds) ||
-      normalizeProjectDateBounds(expensesProjectDateBounds);
+    const referenceProjectDateBounds = normalizeProjectDateBounds(planningProjectDateBounds);
     const planningViewportAfterProjectSelection =
       focusedPlanningViewport ||
       referencePlanningApi.getViewport?.() ||
@@ -126,7 +161,6 @@ export async function applySharedProject(projectKey) {
     );
     const selectionFallbackViewport =
       state.sharedViewportState ||
-      state.expensesApi?.getViewport?.() ||
       planningViewportAfterProjectSelection ||
       {};
     let sharedViewport = buildPlanningLedProjectSelectionViewport(
@@ -147,18 +181,6 @@ export async function applySharedProject(projectKey) {
         Promise.resolve(state.planningAxisApi?.applyViewport?.(sharedViewport)),
       ]);
 
-      if (state.expensesApi) {
-        const stabilizedViewport = await alignExpensesViewportToPlanning(sharedViewport, {
-          onAfterApply: () => scheduleExpensesFramePresentation(),
-        });
-        if (stabilizedViewport?.firstVisibleDate) {
-          sharedViewport = buildCanonicalSharedViewport({
-            ...sharedViewport,
-            ...stabilizedViewport,
-          });
-        }
-      }
-
       state.lastAppliedViewportLogicalSignature = getViewportLogicalSignature(
         normalizedProjectKey,
         sharedViewport
@@ -166,8 +188,11 @@ export async function applySharedProject(projectKey) {
       state.sharedViewportState = sharedViewport;
       setLastRange(sharedViewport);
       syncExpensesPlanningShell(sharedViewport);
+      schedulePlanningFramePresentation();
       scheduleExpensesFramePresentation();
     }
+
+    syncExpensesProjectWhenReady(normalizedProjectKey, sharedViewport);
 
     setLastSource(getViewportSourceLabel("Pilotage commun"));
     setHubStatus(`Projet synchronise : ${normalizedProjectKey}`);

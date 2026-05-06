@@ -2,7 +2,10 @@ import { DEBUG_DISABLE_STICKY_SHELL } from "./constants.js";
 import { dom } from "./dom.js";
 import { state } from "./state.js";
 import { bindPlanningLayoutDebug, schedulePlanningLayoutDebug } from "../layout/debugLayout.js";
-import { scheduleExpensesFramePresentation } from "../layout/framePresentation.js";
+import {
+  scheduleExpensesFramePresentation,
+  schedulePlanningFramePresentation,
+} from "../layout/framePresentation.js";
 import {
   applyPlanningFrameHeight,
   bindPlanningFrameResizeHandle,
@@ -33,12 +36,20 @@ function bindFrameLoadListeners() {
     state.expensesApi = null;
     state.expensesViewportSubscriptionApi = null;
     syncSharedPlanningControlsAvailability();
+    schedulePlanningFramePresentation();
     scheduleExpensesFramePresentation();
     schedulePlanningLayoutDebug("expenses-frame-load");
     void attachExpensesFrameApi();
   });
 
+  dom.planningAxisFrameEl?.addEventListener("load", () => {
+    schedulePlanningFramePresentation();
+    scheduleExpensesFramePresentation();
+    schedulePlanningLayoutDebug("planning-axis-frame-load");
+  });
+
   dom.planningFrameEl?.addEventListener("load", () => {
+    schedulePlanningFramePresentation();
     scheduleExpensesFramePresentation();
     bindPlanningLayoutDebug();
     schedulePlanningLayoutDebug("planning-frame-load");
@@ -66,6 +77,7 @@ export async function bootstrapHubApp() {
     ]);
 
     bindExpensesPlanningShellControls();
+    schedulePlanningFramePresentation();
     scheduleExpensesFramePresentation();
     bindPlanningLayoutDebug();
     bindFrameLoadListeners();

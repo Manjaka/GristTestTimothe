@@ -30,6 +30,7 @@ import {
   clearPlanningTimeline,
   bindTimelineToolbar,
   getPlanningViewportState,
+  refreshPlanningTimelineLayout,
   setPlanningZoomMode,
   movePlanningViewportByMode,
   focusPlanningDataAnchor,
@@ -831,6 +832,9 @@ function exposePlanningSyncApi() {
     },
     getViewport() {
       return getPlanningViewportState();
+    },
+    refreshLayout() {
+      return refreshPlanningTimelineLayout();
     },
     getProjectDateBounds() {
       return currentPlanningDateBounds ? { ...currentPlanningDateBounds } : null;
