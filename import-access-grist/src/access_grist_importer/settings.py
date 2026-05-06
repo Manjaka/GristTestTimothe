@@ -48,12 +48,17 @@ def load_settings() -> Settings:
             api_key=str(grist.get("api_key", "")).strip(),
             doc_id=str(grist.get("doc_id", "")).strip(),
             table_id=str(grist.get("table_id", "")).strip(),
+            time_real_table_id=str(
+                grist.get("time_real_table_id", grist.get("table_id", "TimeReal"))
+            ).strip(),
+            team_table_id=str(grist.get("team_table_id", "Team")).strip(),
+            verify_ssl=bool(grist.get("verify_ssl", True)),
+            ca_bundle=str(grist.get("ca_bundle", "")).strip(),
         ),
         access=AccessConfig(
-            source_table=str(access.get("source_table", "")).strip(),
+            source_table=str(access.get("source_table", "Temps")).strip(),
         ),
         import_options=ImportConfig(
             dry_run=bool(import_options.get("dry_run", True)),
         ),
     )
-

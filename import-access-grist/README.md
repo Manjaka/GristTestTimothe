@@ -3,6 +3,10 @@
 Petite application Python destinee a importer des donnees depuis un fichier
 Access `.accdb` vers une table Grist.
 
+Le flux actuel importe la table Access `Temps` vers la table Grist `TimeReal`.
+Les lignes sont groupees par `NumeroProjet + ID_Collaborateur + Mois`, puis
+`Temps` est additionne dans `Allocation_Days`.
+
 ## Structure
 
 ```text
@@ -37,9 +41,38 @@ Copier `config.example.json` vers `config.json`, puis renseigner :
 - `grist.api_key`
 - `grist.server_url`
 - `grist.doc_id`
-- `grist.table_id`
+- `grist.time_real_table_id`
+- `grist.team_table_id`
+- `import.dry_run`
+- `grist.verify_ssl` / `grist.ca_bundle` si le reseau d'entreprise intercepte HTTPS
 
 Le fichier `config.json` est ignore par Git pour eviter de versionner la cle API.
+
+`dry_run` vaut `true` par defaut. Dans ce mode, l'application lit Access et
+Grist, prepare les lignes, puis affiche un resume sans modifier `TimeReal`.
+Pour remplacer les donnees Grist, mettre `dry_run` a `false`.
+
+Si Python affiche une erreur `CERTIFICATE_VERIFY_FAILED`, il faut idealement
+renseigner `grist.ca_bundle` avec le chemin du certificat racine de l'entreprise.
+En depannage local uniquement, `grist.verify_ssl` peut etre mis a `false`.
+
+## Regles d'import
+
+- Access `Date_Temps` devient Grist `Mois` au format `MM/YYYY`.
+- Access `Temps` est additionne dans Grist `Allocation_Days`.
+- Access `T_fk_ID_Affaire` devient Grist `NumeroProjet`.
+- Access `T_fk_ID_Collaborateur` devient Grist `ID_Collaborateur`.
+- Le collaborateur est conserve uniquement si `T_fk_ID_Collaborateur` existe
+  dans Grist `Team.IdTrefle`.
+- Grist `TimeReal.Name` est rempli avec `Team.PrenonNom`.
+- Quand `dry_run` vaut `false`, toutes les lignes existantes de `TimeReal`
+  sont supprimees, puis remplacees par les lignes preparees.
+
+## Tests
+
+```powershell
+.\.venv\Scripts\python.exe -m unittest discover -s tests
+```
 
 ## Notes
 
@@ -49,4 +82,3 @@ Access soit installe :
 ```text
 Microsoft Access Driver (*.mdb, *.accdb)
 ```
-

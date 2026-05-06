@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from tkinter import Tk, filedialog, messagebox
 
-from .access_reader import list_tables
+from .importer import format_summary, prepare_import, replace_time_real
 from .settings import load_settings
 
 
@@ -31,22 +31,46 @@ def main() -> None:
         return
 
     try:
-        tables = list_tables(database_path)
+        prepared_import = prepare_import(database_path, settings)
     except Exception as error:
         messagebox.showerror(
-            "Lecture Access impossible",
-            f"Impossible de lire le fichier Access.\n\n{error}",
+            "Import impossible",
+            f"Impossible de preparer l'import.\n\n{error}",
         )
         return
 
-    target_table = settings.grist.table_id or "TimeReal"
-    messagebox.showinfo(
-        "Fichier charge",
+    target_table = settings.grist.resolved_time_real_table_id
+    summary_text = (
         "Fichier Access selectionne :\n"
         f"{database_path}\n\n"
-        "Tables detectees :\n"
-        f"{', '.join(tables) if tables else 'Aucune table'}\n\n"
+        f"Table Access source : {settings.access.source_table or 'Temps'}\n"
         f"Table Grist cible : {target_table}\n\n"
-        "Les regles d'import seront ajoutees a l'etape suivante.",
+        f"{format_summary(prepared_import.summary)}"
     )
 
+    if settings.import_options.dry_run:
+        messagebox.showinfo("Simulation import TimeReal", summary_text)
+        return
+
+    confirmed = messagebox.askyesno(
+        "Confirmer le remplacement TimeReal",
+        summary_text
+        + "\n\nATTENTION : toutes les lignes actuelles de TimeReal seront supprimees "
+        "puis remplacees par ces donnees.\n\nContinuer ?",
+    )
+    if not confirmed:
+        return
+
+    try:
+        final_summary = replace_time_real(prepared_import, settings)
+    except Exception as error:
+        messagebox.showerror(
+            "Import Grist impossible",
+            f"Erreur pendant le remplacement de TimeReal.\n\n{error}",
+        )
+        return
+
+    messagebox.showinfo(
+        "Import TimeReal termine",
+        format_summary(final_summary),
+    )
