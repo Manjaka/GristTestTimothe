@@ -129,6 +129,7 @@ export const APP_CONFIG = {
         startDate: "Start_At",
         endDate: "End_At",
         allocationDays: "Allocation_Days",
+        month: "Mois",
       },
       team: {
         id: "id",

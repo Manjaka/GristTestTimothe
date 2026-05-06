@@ -518,14 +518,22 @@ export function buildExpenseData({
     );
     if (!worker) return;
 
-    const startAt = parseRawDateTime(row?.[columns.timeReal.startDate]);
-    const endAt = parseRawDateTime(row?.[columns.timeReal.endDate]);
-    if (!startAt || !endAt) return;
+    const monthKey = getMonthKeyFromRawMonth(row?.[columns.timeReal.month]);
+    if (!monthKey) return;
 
     const allocationDays = Math.max(
       0,
       toFiniteNumber(row?.[columns.timeReal.allocationDays], 0)
     );
+    if (allocationDays <= 0) return;
+
+    const startAt =
+      getMonthKeyAnchorDate(monthKey) ||
+      parseRawDateTime(row?.[columns.timeReal.startDate]);
+    const endAt =
+      getMonthKeyEndDate(monthKey) ||
+      parseRawDateTime(row?.[columns.timeReal.endDate]) ||
+      startAt;
     const segment = {
       id: Number(row?.[columns.timeReal.id]),
       projectTeamLink: worker.id,
@@ -538,11 +546,7 @@ export function buildExpenseData({
     };
 
     worker.realSegments.push(segment);
-
-    const monthlyAllocation = getSegmentAllocationByMonth(segment);
-    Object.entries(monthlyAllocation).forEach(([monthKey, days]) => {
-      mergeMonthlyDays(worker.workedDays, monthKey, toFiniteNumber(days, 0));
-    });
+    mergeMonthlyDays(worker.workedDays, monthKey, allocationDays);
   });
 
   workersById.forEach((worker) => {

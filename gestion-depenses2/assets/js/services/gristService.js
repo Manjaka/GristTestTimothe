@@ -39,6 +39,7 @@ const TIME_REAL_COLUMN_ALIASES = {
     "Allocation",
     "Days",
   ],
+  month: ["Mois", "Month"],
 };
 
 function getGrist() {
@@ -230,6 +231,7 @@ async function fetchNormalizedTimeRealRows() {
     [canonicalColumns.startDate]: row?.[resolvedColumns.startDate],
     [canonicalColumns.endDate]: row?.[resolvedColumns.endDate],
     [canonicalColumns.allocationDays]: row?.[resolvedColumns.allocationDays],
+    [canonicalColumns.month]: row?.[resolvedColumns.month],
   }));
 }
 

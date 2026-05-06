@@ -178,6 +178,20 @@ export function getMonthKeyFromRawMonth(value) {
     return `${directMonthMatch[1]}-${directMonthMatch[2]}`;
   }
 
+  const frenchMonthMatch = text.match(/^(\d{1,2})\/(\d{4})$/);
+  if (frenchMonthMatch) {
+    const monthNumber = Number(frenchMonthMatch[1]);
+    const year = Number(frenchMonthMatch[2]);
+    if (
+      Number.isInteger(year) &&
+      Number.isInteger(monthNumber) &&
+      monthNumber >= 1 &&
+      monthNumber <= 12
+    ) {
+      return `${year}-${String(monthNumber).padStart(2, "0")}`;
+    }
+  }
+
   const date = new Date(text);
   if (!Number.isNaN(date.getTime())) {
     return getMonthKeyFromDate(date);
